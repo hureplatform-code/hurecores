@@ -1,15 +1,29 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { StaffPermissions } from '../../types';
 
 interface EmployeeSidebarProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     userRole: string;
+    systemRole?: string;
+    permissions?: StaffPermissions | null;
+    userName?: string;
 }
 
-const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ isOpen, setIsOpen, userRole }) => {
-    // Check if user has manager privileges
-    const isManager = ['Owner', 'HR Manager', 'Shift Manager', 'Payroll Officer'].includes(userRole);
+const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
+    isOpen,
+    setIsOpen,
+    userRole,
+    systemRole,
+    permissions,
+    userName
+}) => {
+    // Check if user has admin privileges (OWNER always has full access, ADMIN has permission-based access)
+    const isOwner = systemRole === 'OWNER';
+    const isAdmin = systemRole === 'ADMIN';
+    const hasAnyAdminPermission = permissions && Object.values(permissions).some(v => v);
+    const showAdminSection = isOwner || (isAdmin && hasAnyAdminPermission);
 
     const personalLinks = [
         { name: 'My Schedule', path: '/employee', icon: '📅', exact: true },
@@ -18,14 +32,54 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ isOpen, setIsOpen, us
         { name: 'My Profile', path: '/employee/profile', icon: '👤' },
     ];
 
-    const managerLinks = [
-        { name: 'Dashboard', path: '/employee/manager', icon: '📊' },
-        { name: 'Team Schedule', path: '/employee/manager/schedule', icon: '👥' },
-        { name: 'Staff Directory', path: '/employee/manager/staff', icon: '📋' },
-        { name: 'Leave Approvals', path: '/employee/manager/leave', icon: '✅' },
-        { name: 'Payroll', path: '/employee/manager/payroll', icon: '💰' },
-        { name: 'Documents', path: '/employee/manager/documents', icon: '📂' },
-    ];
+    // Build admin links based on permissions
+    const getAdminLinks = () => {
+        const links = [];
+
+        // Dashboard is always shown for admins
+        if (showAdminSection) {
+            links.push({ name: 'Dashboard', path: '/employee/manager', icon: '📊' });
+        }
+
+        // Staff Management
+        if (isOwner || permissions?.staffManagement) {
+            links.push({ name: 'Staff Directory', path: '/employee/manager/staff', icon: '👥' });
+        }
+
+        // Scheduling
+        if (isOwner || permissions?.scheduling) {
+            links.push({ name: 'Team Schedule', path: '/employee/manager/schedule', icon: '📆' });
+        }
+
+        // Attendance
+        if (isOwner || permissions?.attendance) {
+            links.push({ name: 'Attendance', path: '/employee/manager/attendance', icon: '⏰' });
+        }
+
+        // Leave
+        if (isOwner || permissions?.leave) {
+            links.push({ name: 'Leave Approvals', path: '/employee/manager/leave', icon: '✅' });
+        }
+
+        // Documents & Policies
+        if (isOwner || permissions?.documentsAndPolicies) {
+            links.push({ name: 'Documents', path: '/employee/manager/documents', icon: '📂' });
+        }
+
+        // Payroll
+        if (isOwner || permissions?.payroll) {
+            links.push({ name: 'Payroll', path: '/employee/manager/payroll', icon: '💰' });
+        }
+
+        // Settings/Admin (only for owners or if explicitly granted)
+        if (isOwner || permissions?.settingsAdmin) {
+            links.push({ name: 'Settings', path: '/employee/manager/settings', icon: '⚙️' });
+        }
+
+        return links;
+    };
+
+    const adminLinks = getAdminLinks();
 
     return (
         <>
@@ -61,8 +115,8 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ isOpen, setIsOpen, us
                                     end={link.exact}
                                     onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
                                     className={({ isActive }) => `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
                                         }`}
                                 >
                                     <span className="text-lg">{link.icon}</span>
@@ -72,19 +126,21 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ isOpen, setIsOpen, us
                         </nav>
                     </div>
 
-                    {/* Section: MANAGER (Conditional) */}
-                    {isManager && (
+                    {/* Section: ADMIN (Conditional based on permissions) */}
+                    {showAdminSection && adminLinks.length > 0 && (
                         <div>
-                            <div className="px-3 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">MANAGER</div>
+                            <div className="px-3 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                {isOwner ? 'MANAGEMENT' : 'ADMIN'}
+                            </div>
                             <nav className="space-y-1">
-                                {managerLinks.map((link) => (
+                                {adminLinks.map((link) => (
                                     <NavLink
                                         key={link.path}
                                         to={link.path}
                                         onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
                                         className={({ isActive }) => `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         <span className="text-lg">{link.icon}</span>
@@ -101,11 +157,13 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ isOpen, setIsOpen, us
                 <div className="p-4 border-t border-slate-800">
                     <div className="flex items-center space-x-3 p-3 bg-slate-800/50 rounded-xl">
                         <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">
-                            {userRole[0]}
+                            {userName?.[0]?.toUpperCase() || userRole[0]}
                         </div>
                         <div className="overflow-hidden">
-                            <div className="text-sm font-bold truncate">Logged in as</div>
-                            <div className="text-xs text-slate-400 truncate">{userRole}</div>
+                            <div className="text-sm font-bold truncate">{userName || 'Logged in as'}</div>
+                            <div className="text-xs text-slate-400 truncate">
+                                {isOwner ? 'Owner' : isAdmin ? 'Admin' : 'Staff'}
+                            </div>
                         </div>
                     </div>
                 </div>
