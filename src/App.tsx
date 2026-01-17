@@ -14,6 +14,16 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
 
+  // Helper to check if user is Owner (full employer access)
+  const isOwner = user?.systemRole === 'OWNER' || user?.role === 'Owner';
+
+  // Helper to check if user is Admin (permission-based access via employee dashboard)
+  const isAdmin = user?.systemRole === 'ADMIN' ||
+    ['HR Manager', 'Shift Manager', 'Payroll Officer'].includes(user?.role || '');
+
+  // Helper to check if user is Super Admin
+  const isSuperAdmin = user?.isSuperAdmin || user?.role === 'SuperAdmin';
+
   return (
     <Routes>
       <Route path="/" element={<Home />} />
@@ -22,19 +32,22 @@ const AppRoutes: React.FC = () => {
       <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route path="/super-login" element={<SuperAdminLogin />} />
 
-      {/* Protected Employer Routes */}
+      {/* Protected Employer Routes - ONLY for OWNER */}
       <Route
         path="/employer/*"
         element={
-          user && (user.role === 'Owner' || user.role === 'HR Manager') ? (
+          user && isOwner ? (
             <EmployerDashboard user={user} />
+          ) : user && isAdmin ? (
+            // Admin users should go to employee dashboard, not employer
+            <Navigate to="/employee" replace />
           ) : (
             <Navigate to="/login" replace />
           )
         }
       />
 
-      {/* Protected Employee Routes */}
+      {/* Protected Employee Routes - For ADMIN and EMPLOYEE */}
       <Route
         path="/employee/*"
         element={
@@ -46,11 +59,11 @@ const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Protected Admin Routes */}
+      {/* Protected Super Admin Routes */}
       <Route
         path="/admin/*"
         element={
-          user?.isSuperAdmin || user?.role === 'SuperAdmin' ? ( // Handle both property styles
+          user && isSuperAdmin ? (
             <SuperAdminDashboard />
           ) : (
             <Navigate to="/super-login" replace />
@@ -58,13 +71,13 @@ const AppRoutes: React.FC = () => {
         }
       />
 
-      {/* Redirect based on role if just '/' but logged in */}
+      {/* Redirect based on role */}
       <Route
         path="/dashboard"
         element={
           !user ? <Navigate to="/login" /> :
-            user.role === 'SuperAdmin' ? <Navigate to="/admin" /> :
-              (user.role === 'Owner' || user.role === 'HR Manager') ? <Navigate to="/employer" /> :
+            isSuperAdmin ? <Navigate to="/admin" /> :
+              isOwner ? <Navigate to="/employer" /> :
                 <Navigate to="/employee" />
         }
       />
