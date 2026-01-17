@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import EmployerSidebar from '../components/employer/EmployerSidebar';
 import EmployerTopBar from '../components/employer/EmployerTopBar';
@@ -15,9 +15,8 @@ import LocationsManager from '../components/employer/LocationsManager';
 import PermissionsManager from '../components/employer/PermissionsManager';
 import SettingsView from '../components/employer/SettingsView';
 
-// Placeholder components for tabs (will be implemented in separate files)
-// const Permissions = () => <div className="p-8"><h2 className="text-2xl font-bold">Roles & Permissions</h2></div>;
-// const Settings = () => <div className="p-8"><h2 className="text-2xl font-bold">Settings</h2></div>;
+import { organizationService } from '../lib/services/organization.service';
+import type { Organization, Location } from '../types';
 
 interface EmployerDashboardProps {
   user: any;
@@ -25,6 +24,51 @@ interface EmployerDashboardProps {
 
 const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Organization and locations state
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.organizationId) {
+      loadOrganizationData();
+    }
+  }, [user?.organizationId]);
+
+  const loadOrganizationData = async () => {
+    if (!user?.organizationId) return;
+
+    setLoading(true);
+    try {
+      const [org, locs] = await Promise.all([
+        organizationService.getById(user.organizationId),
+        organizationService.getLocations(user.organizationId)
+      ]);
+      setOrganization(org);
+      setLocations(locs);
+    } catch (err) {
+      console.error('Error loading organization data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLocationChange = (locationId: string) => {
+    setSelectedLocationId(locationId);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin text-4xl mb-4">⏳</div>
+          <p className="text-slate-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 font-inter overflow-hidden">
@@ -36,7 +80,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
 
       <div className="flex-1 flex flex-col min-w-0">
         <EmployerTopBar
-          user={user}
+          organization={organization}
+          locations={locations}
+          selectedLocationId={selectedLocationId}
+          onLocationChange={handleLocationChange}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
@@ -49,8 +96,9 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             <Route path="/attendance" element={<AttendanceView />} />
             <Route path="/payroll" element={<PayrollView />} />
             <Route path="/leave" element={<LeaveManager />} />
-            <Route path="/billing" element={<BillingView />} />
+            <Route path="/billing" element={<BillingView organization={organization} />} />
             <Route path="/organization" element={<OrgDetails />} />
+            <Route path="/verification" element={<OrgDetails />} />
             <Route path="/locations" element={<LocationsManager />} />
             <Route path="/permissions" element={<PermissionsManager />} />
             <Route path="/settings" element={<SettingsView />} />

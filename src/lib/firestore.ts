@@ -30,6 +30,7 @@ export const collections = {
     // Top-level collections
     organizations: () => collection(db, 'organizations'),
     users: () => collection(db, 'users'),
+    staffInvitations: () => collection(db, 'staffInvitations'),
     verificationRequests: () => collection(db, 'verificationRequests'),
     auditLogs: () => collection(db, 'auditLogs'),
 
@@ -54,6 +55,7 @@ export const collections = {
 export const docs = {
     organization: (orgId: string) => doc(db, 'organizations', orgId),
     user: (userId: string) => doc(db, 'users', userId),
+    staffInvitation: (inviteId: string) => doc(db, 'staffInvitations', inviteId),
     location: (orgId: string, locationId: string) => doc(db, 'organizations', orgId, 'locations', locationId),
     staff: (orgId: string, staffId: string) => doc(db, 'organizations', orgId, 'staff', staffId),
     shift: (orgId: string, shiftId: string) => doc(db, 'organizations', orgId, 'shifts', shiftId),
@@ -61,6 +63,7 @@ export const docs = {
     leaveRequest: (orgId: string, requestId: string) => doc(db, 'organizations', orgId, 'leaveRequests', requestId),
     payrollPeriod: (orgId: string, periodId: string) => doc(db, 'organizations', orgId, 'payrollPeriods', periodId),
     document: (orgId: string, docId: string) => doc(db, 'organizations', orgId, 'documents', docId),
+    notification: (orgId: string, notifId: string) => doc(db, 'organizations', orgId, 'notifications', notifId),
     verificationRequest: (requestId: string) => doc(db, 'verificationRequests', requestId),
     auditLog: (logId: string) => doc(db, 'auditLogs', logId),
 };

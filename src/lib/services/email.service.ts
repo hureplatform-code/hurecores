@@ -1,8 +1,6 @@
-// Brevo Email Service
-// Using Brevo API for transactional emails
-
-const BREVO_API_KEY = import.meta.env.BREVO_API_KEY || '';
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+// Brevo Email Service (Client-Side)
+// WARNING: This implementation exposes the API Key to the client.
+// This is done to bypass Firebase Cloud Functions limitations on the Spark plan.
 
 interface EmailRecipient {
   email: string;
@@ -13,41 +11,49 @@ interface SendEmailParams {
   to: EmailRecipient[];
   subject: string;
   htmlContent: string;
-  textContent?: string;
-  senderName?: string;
-  senderEmail?: string;
 }
 
+const API_KEY = import.meta.env.VITE_BREVO_API_KEY;
+const SENDER_EMAIL = import.meta.env.VITE_BREVO_SENDER_EMAIL;
+const SENDER_NAME = import.meta.env.VITE_BREVO_SENDER_NAME;
+
+// Helper to send email directly via Brevo API
 async function sendEmail(params: SendEmailParams): Promise<boolean> {
+  if (!API_KEY || !SENDER_EMAIL) {
+    console.error('Brevo API Key or Sender Email not configured');
+    return false;
+  }
+
   try {
-    const response = await fetch(BREVO_API_URL, {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json'
+        'api-key': API_KEY,
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         sender: {
-          name: params.senderName || 'HURE Core',
-          email: params.senderEmail || 'noreply@gethure.com'
+          name: SENDER_NAME || 'HURE Core',
+          email: SENDER_EMAIL
         },
         to: params.to,
         subject: params.subject,
-        htmlContent: params.htmlContent,
-        textContent: params.textContent
+        htmlContent: params.htmlContent
       })
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('Brevo API error:', error);
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log('Email sent successfully:', data.messageId);
+      return true;
+    } else {
+      console.error('Failed to send email:', data);
       return false;
     }
-
-    return true;
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('Network error sending email:', error);
     return false;
   }
 }
@@ -73,17 +79,14 @@ const templates = {
         <div class="container">
           <div class="header">
             <h1 style="margin: 0;">🏥 HURE Core</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Healthcare Workforce Management</p>
           </div>
           <div class="content">
             <h2>Welcome to ${data.orgName}!</h2>
             <p>Hi ${data.recipientName},</p>
-            <p>You've been invited to join <strong>${data.orgName}</strong> on HURE Core, the modern workforce management platform for healthcare organizations.</p>
-            <p>Click the button below to set up your account and get started:</p>
+            <p>You've been invited to join <strong>${data.orgName}</strong> on HURE Core.</p>
             <center>
               <a href="${data.inviteLink}" class="button">Accept Invitation</a>
             </center>
-            <p style="color: #64748b; font-size: 14px;">This invitation will expire in 7 days. If you didn't expect this invitation, please ignore this email.</p>
           </div>
           <div class="footer">
             <p>© 2026 HURE Core. All rights reserved.</p>
@@ -99,32 +102,12 @@ const templates = {
     htmlContent: `
       <!DOCTYPE html>
       <html>
-      <head>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
-          .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-          .button { display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-          .footer { text-align: center; padding: 20px; color: #64748b; font-size: 14px; }
-        </style>
-      </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0;">🔐 Password Reset</h1>
-          </div>
-          <div class="content">
-            <p>Hi ${data.recipientName},</p>
-            <p>We received a request to reset your HURE Core password. Click the button below to create a new password:</p>
-            <center>
-              <a href="${data.resetLink}" class="button">Reset Password</a>
-            </center>
-            <p style="color: #64748b; font-size: 14px;">This link will expire in 1 hour. If you didn't request this reset, please ignore this email - your password will remain unchanged.</p>
-          </div>
-          <div class="footer">
-            <p>© 2026 HURE Core. All rights reserved.</p>
-          </div>
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Reset Password</h2>
+          <p>Hi ${data.recipientName},</p>
+          <p>Click below to reset your password:</p>
+          <a href="${data.resetLink}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
         </div>
       </body>
       </html>
@@ -136,105 +119,46 @@ const templates = {
     htmlContent: `
       <!DOCTYPE html>
       <html>
-      <head>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: ${data.status === 'Verified' ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'}; color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
-          .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-          .status-badge { display: inline-block; background: ${data.status === 'Verified' ? '#dcfce7' : '#fee2e2'}; color: ${data.status === 'Verified' ? '#166534' : '#991b1b'}; padding: 8px 16px; border-radius: 20px; font-weight: 600; }
-          .footer { text-align: center; padding: 20px; color: #64748b; font-size: 14px; }
-        </style>
-      </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0;">${data.status === 'Verified' ? '✅' : '❌'} Verification ${data.status}</h1>
-          </div>
-          <div class="content">
-            <p>Hi ${data.recipientName},</p>
-            <p>Your ${data.entityType.toLowerCase()} <strong>${data.entityName}</strong> verification has been reviewed:</p>
-            <center>
-              <span class="status-badge">${data.status.toUpperCase()}</span>
-            </center>
-            ${data.status === 'Rejected' && data.reason ? `
-              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin-top: 20px;">
-                <strong style="color: #991b1b;">Reason:</strong>
-                <p style="margin: 5px 0 0 0; color: #7f1d1d;">${data.reason}</p>
-              </div>
-              <p>Please update your documents and resubmit for verification.</p>
-            ` : `
-              <p style="margin-top: 20px;">You now have full access to all HURE Core features. Log in to your dashboard to get started!</p>
-            `}
-          </div>
-          <div class="footer">
-            <p>© 2026 HURE Core. All rights reserved.</p>
-          </div>
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Verification ${data.status}</h2>
+          <p>Hi ${data.recipientName},</p>
+          <p>Your ${data.entityType} <strong>${data.entityName}</strong> has been ${data.status.toLowerCase()}.</p>
+          ${data.reason ? `<p>Reason: ${data.reason}</p>` : ''}
         </div>
       </body>
       </html>
     `
   }),
 
-  welcomeEmail: (data: { orgName: string; recipientName: string; recipientEmail: string }) => ({
-    subject: `Welcome to HURE Core - Let's get started!`,
+  welcomeEmail: (data: { orgName: string; recipientName: string }) => ({
+    subject: `Welcome to HURE Core!`,
     htmlContent: `
       <!DOCTYPE html>
       <html>
-      <head>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0; }
-          .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
-          .step { display: flex; align-items: flex-start; margin: 15px 0; }
-          .step-number { background: #2563eb; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; flex-shrink: 0; }
-          .button { display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-          .footer { text-align: center; padding: 20px; color: #64748b; font-size: 14px; }
-        </style>
-      </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0;">🎉 Welcome to HURE Core!</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Your healthcare workforce management platform</p>
-          </div>
-          <div class="content">
-            <p>Hi ${data.recipientName},</p>
-            <p>Thank you for registering <strong>${data.orgName}</strong> on HURE Core! Here's what you need to do next:</p>
-            
-            <div class="step">
-              <div class="step-number">1</div>
-              <div>
-                <strong>Complete Organization Verification</strong>
-                <p style="margin: 5px 0 0 0; color: #64748b;">Upload your business registration and KRA PIN to verify your organization.</p>
-              </div>
-            </div>
-            
-            <div class="step">
-              <div class="step-number">2</div>
-              <div>
-                <strong>Add Your Locations</strong>
-                <p style="margin: 5px 0 0 0; color: #64748b;">Set up your clinic/facility locations and submit their licenses for verification.</p>
-              </div>
-            </div>
-            
-            <div class="step">
-              <div class="step-number">3</div>
-              <div>
-                <strong>Invite Your Team</strong>
-                <p style="margin: 5px 0 0 0; color: #64748b;">Add staff members and assign them roles with appropriate permissions.</p>
-              </div>
-            </div>
-            
-            <center>
-              <a href="https://hurecore.gethure.com/#/employer" class="button">Go to Dashboard</a>
-            </center>
-          </div>
-          <div class="footer">
-            <p>Need help? Contact us at support@gethure.com</p>
-            <p>© 2026 HURE Core. All rights reserved.</p>
-          </div>
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Welcome!</h2>
+          <p>Hi ${data.recipientName},</p>
+          <p>Welcome to HURE Core. Your organization <strong>${data.orgName}</strong> is ready.</p>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  otpEmail: (data: { otp: string; recipientName: string }) => ({
+    subject: 'Your HURE Core Verification Code',
+    htmlContent: `
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: sans-serif;">
+          <h2 style="color: #2563eb;">Verification Code</h2>
+          <p>Hi ${data.recipientName},</p>
+          <p>Your verification code is:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e293b; margin: 20px 0;">${data.otp}</div>
+          <p>This code will expire in 10 minutes.</p>
         </div>
       </body>
       </html>
@@ -279,11 +203,68 @@ export const emailService = {
   },
 
   async sendWelcomeEmail(email: string, name: string, orgName: string): Promise<boolean> {
-    const template = templates.welcomeEmail({ orgName, recipientName: name, recipientEmail: email });
+    const template = templates.welcomeEmail({ orgName, recipientName: name });
     return sendEmail({
       to: [{ email, name }],
       subject: template.subject,
       htmlContent: template.htmlContent
     });
+  },
+
+  // Handled locally since no backend functions
+  async sendOTP(email: string, firstName: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // 1. Generate OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // 2. Identify user session/browser (Simplistic: Store in localStorage for MVP demo)
+      // In a real app without backend, you'd store this in Firestore with an expiration
+      // But for total client-side demo, localStorage is the only "state" we have shared
+      // SECURITY WARNING: This allows users to find the OTP in their own browser storage. 
+      // It is NOT secure.
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
+      localStorage.setItem(`otp_${email}`, JSON.stringify({ otp, expiresAt }));
+
+      // 3. Send Email
+      const template = templates.otpEmail({ otp, recipientName: firstName || 'User' });
+      const sent = await sendEmail({
+        to: [{ email, name: firstName }],
+        subject: template.subject,
+        htmlContent: template.htmlContent
+      });
+
+      if (!sent) throw new Error('Failed to send email via Brevo');
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Send OTP Error:', err);
+      return { success: false, error: err.message || 'Failed to send OTP' };
+    }
+  },
+
+  async verifyOTP(email: string, otp: string): Promise<{ success: boolean; verified?: boolean; error?: string }> {
+    try {
+      const storedData = localStorage.getItem(`otp_${email}`);
+      if (!storedData) {
+        return { success: false, error: 'No OTP found. Please request a new one.' };
+      }
+
+      const { otp: correctOtp, expiresAt } = JSON.parse(storedData);
+
+      if (Date.now() > expiresAt) {
+        localStorage.removeItem(`otp_${email}`);
+        return { success: false, error: 'OTP expired' };
+      }
+
+      if (otp === correctOtp) {
+        localStorage.removeItem(`otp_${email}`);
+        return { success: true, verified: true };
+      } else {
+        return { success: true, verified: false, error: 'Invalid OTP' };
+      }
+    } catch (err: any) {
+      console.error('Verify OTP Error:', err);
+      return { success: false, error: err.message || 'Error verifying OTP' };
+    }
   }
 };

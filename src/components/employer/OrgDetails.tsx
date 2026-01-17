@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { organizationService } from '../../lib/services';
-import { storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { organizationService, storageService } from '../../lib/services';
 import type { Organization, Location, VerificationStatus } from '../../types';
 
 const OrgDetails: React.FC = () => {
@@ -62,9 +60,11 @@ const OrgDetails: React.FC = () => {
     };
 
     const handleFileUpload = async (file: File, path: string): Promise<string> => {
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        return getDownloadURL(storageRef);
+        const result = await storageService.uploadFile(file, path, 'documents');
+        if (!result.success || !result.url) {
+            throw new Error(result.error || 'Upload failed');
+        }
+        return result.url;
     };
 
     const handleOrgDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,10 +318,10 @@ const OrgDetails: React.FC = () => {
                                             <span className="font-medium">{location.licenseNumber}</span>
                                             {location.licenseExpiry && (
                                                 <span className={`ml-2 ${isLicenseExpired(location.licenseExpiry)
-                                                        ? 'text-red-600'
-                                                        : isLicenseExpiringSoon(location.licenseExpiry)
-                                                            ? 'text-amber-600'
-                                                            : 'text-slate-500'
+                                                    ? 'text-red-600'
+                                                    : isLicenseExpiringSoon(location.licenseExpiry)
+                                                        ? 'text-amber-600'
+                                                        : 'text-slate-500'
                                                     }`}>
                                                     (Expires: {location.licenseExpiry}
                                                     {isLicenseExpired(location.licenseExpiry) && ' - EXPIRED'}

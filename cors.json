@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["http://localhost:3000", "https://hurecore-cd39e.web.app"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],
+    "maxAgeSeconds": 3600
+  }
+]

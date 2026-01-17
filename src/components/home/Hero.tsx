@@ -36,11 +36,7 @@ const Hero: React.FC = () => {
                 </div>
 
                 <div className="mt-16 pt-8 border-t border-slate-100 flex flex-wrap justify-center gap-8 opacity-60 grayscale animate-fade-in-up animation-delay-500">
-                    {/* Trust badges / logos could go here */}
-                    <div className="h-8 w-32 bg-slate-200 rounded animate-pulse"></div>
-                    <div className="h-8 w-32 bg-slate-200 rounded animate-pulse"></div>
-                    <div className="h-8 w-32 bg-slate-200 rounded animate-pulse"></div>
-                    <div className="h-8 w-32 bg-slate-200 rounded animate-pulse"></div>
+                    {/* Trust badges removed */}
                 </div>
             </div>
         </section>

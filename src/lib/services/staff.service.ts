@@ -39,10 +39,10 @@ export const staffService = {
    * Get all staff in an organization
    */
   async getAll(organizationId: string): Promise<Profile[]> {
+    // Query without orderBy to avoid composite index requirement
     const q = query(
       collections.users(),
-      where('organizationId', '==', organizationId),
-      orderBy('fullName')
+      where('organizationId', '==', organizationId)
     );
     const snapshot = await getDocs(q);
 
@@ -63,7 +63,8 @@ export const staffService = {
       })
     );
 
-    return staff;
+    // Sort in-memory by fullName instead of using Firestore orderBy
+    return staff.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   },
 
   /**
@@ -99,9 +100,9 @@ export const staffService = {
   },
 
   /**
-   * Create a new staff member (without Firebase Auth - invitation only)
+   * Create a new staff invitation (stores in staffInvitations collection, not users)
    */
-  async createStaffInvitation(input: CreateStaffInput, organizationId: string): Promise<{ success: boolean; error?: string; staffId?: string }> {
+  async createStaffInvitation(input: CreateStaffInput, organizationId: string): Promise<{ success: boolean; error?: string; inviteId?: string }> {
     try {
       // Validate admin seat if assigning ADMIN role
       if (input.systemRole === 'ADMIN') {
@@ -131,11 +132,8 @@ export const staffService = {
         };
       }
 
-      // Create a pending staff record (will be linked when they accept invite)
-      const staffId = `invited_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      await setDoc(docs.user(staffId), {
-        id: staffId,
+      // Create invitation in staffInvitations collection (admin has write access here)
+      const inviteDoc = await addDoc(collections.staffInvitations(), {
         email: input.email,
         fullName: `${input.firstName} ${input.lastName}`,
         firstName: input.firstName,
@@ -147,25 +145,29 @@ export const staffService = {
         jobTitle: input.jobTitle || null,
         department: input.department || null,
         employmentType: input.employmentType,
-        staffStatus: 'Invited' as StaffStatus,
         monthlySalaryCents: input.monthlySalaryCents || 0,
         dailyRateCents: input.dailyRateCents || 0,
         shiftRateCents: input.shiftRateCents || 0,
         hourlyRateCents: input.hourlyRateCents || 0,
         payMethod: input.payMethod || 'Fixed',
         hireDate: input.hireDate || null,
-        isSuperAdmin: false,
         permissions: input.systemRole === 'ADMIN' ? input.permissions : null,
+        status: 'pending', // pending, accepted, expired
+        invitedBy: auth.currentUser?.uid || null,
+        invitedByEmail: auth.currentUser?.email || null,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       });
+
+      const inviteId = inviteDoc.id;
 
       // Get organization name for email
       const org = await organizationService.getById(organizationId);
       const orgName = org?.name || 'Your Organization';
 
-      // Send invitation email
-      const inviteLink = `${window.location.origin}/#/signup?invite=${staffId}&org=${organizationId}`;
+      // Send invitation email with invite token
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const inviteLink = `${baseUrl}/#/accept-invite?token=${inviteId}`;
 
       try {
         await emailService.sendStaffInvitation(
@@ -176,7 +178,7 @@ export const staffService = {
         );
       } catch (emailError) {
         console.error('Failed to send invitation email:', emailError);
-        // Continue - staff record is created
+        // Continue - invitation record is created
       }
 
       // Add audit log
@@ -186,16 +188,196 @@ export const staffService = {
         auth.currentUser?.uid,
         auth.currentUser?.email || undefined,
         organizationId,
-        { staffId, email: input.email, role: input.systemRole }
+        { inviteId, email: input.email, role: input.systemRole }
       );
 
-      return { success: true, staffId };
+      return { success: true, inviteId };
     } catch (error: any) {
-      console.error('Create staff error:', error);
+      console.error('Create staff invitation error:', error);
       return {
         success: false,
-        error: error.message || 'Failed to create staff member'
+        error: error.message || 'Failed to create staff invitation'
       };
+    }
+  },
+
+  /**
+   * Get a staff invitation by ID
+   */
+  async getInvitation(inviteId: string): Promise<any | null> {
+    return getDocument(docs.staffInvitation(inviteId));
+  },
+
+  /**
+   * Accept an invitation - called when invited user signs up
+   * This creates the actual user profile and marks invitation as accepted
+   */
+  async acceptInvitation(inviteId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const invitation = await this.getInvitation(inviteId);
+
+      if (!invitation) {
+        return { success: false, error: 'Invitation not found' };
+      }
+
+      if (invitation.status === 'accepted') {
+        return { success: false, error: 'Invitation has already been accepted' };
+      }
+
+      if (invitation.status === 'expired' || new Date(invitation.expiresAt) < new Date()) {
+        return { success: false, error: 'Invitation has expired' };
+      }
+
+      // Create the actual user profile
+      await setDoc(docs.user(userId), {
+        id: userId,
+        email: invitation.email,
+        fullName: invitation.fullName,
+        firstName: invitation.firstName,
+        lastName: invitation.lastName,
+        phone: invitation.phone,
+        organizationId: invitation.organizationId,
+        locationId: invitation.locationId,
+        systemRole: invitation.systemRole,
+        jobTitle: invitation.jobTitle,
+        department: invitation.department,
+        employmentType: invitation.employmentType,
+        staffStatus: 'Active',
+        monthlySalaryCents: invitation.monthlySalaryCents,
+        dailyRateCents: invitation.dailyRateCents,
+        shiftRateCents: invitation.shiftRateCents,
+        hourlyRateCents: invitation.hourlyRateCents,
+        payMethod: invitation.payMethod,
+        hireDate: invitation.hireDate,
+        isSuperAdmin: false,
+        permissions: invitation.permissions,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Mark invitation as accepted
+      await updateDoc(docs.staffInvitation(inviteId), {
+        status: 'accepted',
+        acceptedAt: serverTimestamp(),
+        acceptedByUserId: userId
+      });
+
+      // Add audit log
+      await addAuditLog(
+        'Staff',
+        `${invitation.fullName} accepted invitation and joined as ${invitation.systemRole}`,
+        userId,
+        invitation.email,
+        invitation.organizationId,
+        { inviteId }
+      );
+
+      // Notify organization admins about new staff member
+      try {
+        // Get all admins and owner for this organization
+        const admins = await this.getAll(invitation.organizationId);
+        const adminIds = admins
+          .filter(u => u.systemRole === 'OWNER' || u.systemRole === 'ADMIN')
+          .map(u => u.id);
+
+        // Create notifications for each admin
+        for (const adminId of adminIds) {
+          await addDoc(collections.notifications(invitation.organizationId), {
+            userId: adminId,
+            organizationId: invitation.organizationId,
+            type: 'staff_joined',
+            title: '👋 New Staff Member Joined',
+            message: `${invitation.fullName} has accepted their invitation and joined as ${invitation.systemRole}.`,
+            link: '/#/employer/staff',
+            read: false,
+            createdAt: serverTimestamp()
+          });
+        }
+      } catch (notifError) {
+        console.error('Failed to send notifications:', notifError);
+        // Don't fail the acceptance if notifications fail
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Accept invitation error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to accept invitation'
+      };
+    }
+  },
+
+  /**
+   * Get all pending invitations for an organization
+   */
+  async getPendingInvitations(organizationId: string): Promise<any[]> {
+    const q = query(
+      collections.staffInvitations(),
+      where('organizationId', '==', organizationId),
+      where('status', '==', 'pending')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  /**
+   * Cancel/revoke an invitation
+   */
+  async cancelInvitation(inviteId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await updateDoc(docs.staffInvitation(inviteId), {
+        status: 'cancelled',
+        cancelledAt: serverTimestamp()
+      });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Resend invitation email
+   */
+  async resendInvitation(inviteId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const invitation = await this.getInvitation(inviteId);
+      if (!invitation || invitation.status !== 'pending') {
+        return { success: false, error: 'Invitation not found or already used' };
+      }
+
+      // Update expiration
+      const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await updateDoc(docs.staffInvitation(inviteId), {
+        expiresAt: newExpiry,
+        updatedAt: serverTimestamp()
+      });
+
+      // Get org name and resend
+      const org = await organizationService.getById(invitation.organizationId);
+      const orgName = org?.name || 'Your Organization';
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const inviteLink = `${baseUrl}/#/accept-invite?token=${inviteId}`;
+      console.log('Sending invitation email to:', invitation.email);
+      console.log('Invite link:', inviteLink);
+
+      const emailSent = await emailService.sendStaffInvitation(
+        invitation.email,
+        invitation.fullName,
+        orgName,
+        inviteLink
+      );
+
+      if (!emailSent) {
+        console.error('Email service returned false - email may not have been sent');
+        return { success: false, error: 'Failed to send email. Please check email configuration.' };
+      }
+
+      console.log('Email sent successfully to:', invitation.email);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Resend invitation error:', error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -318,28 +500,32 @@ export const staffService = {
    * Get staff by location
    */
   async getByLocation(organizationId: string, locationId: string): Promise<Profile[]> {
+    // Query without orderBy to avoid composite index requirement
     const q = query(
       collections.users(),
       where('organizationId', '==', organizationId),
-      where('locationId', '==', locationId),
-      orderBy('fullName')
+      where('locationId', '==', locationId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+    const staff = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+    // Sort in-memory
+    return staff.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   },
 
   /**
    * Get staff by system role
    */
   async getByRole(organizationId: string, role: SystemRole): Promise<Profile[]> {
+    // Query without orderBy to avoid composite index requirement
     const q = query(
       collections.users(),
       where('organizationId', '==', organizationId),
-      where('systemRole', '==', role),
-      orderBy('fullName')
+      where('systemRole', '==', role)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+    const staff = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+    // Sort in-memory
+    return staff.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   },
 
   /**

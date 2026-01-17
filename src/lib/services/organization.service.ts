@@ -122,13 +122,18 @@ export const organizationService = {
    * Get all locations for an organization
    */
   async getLocations(organizationId: string): Promise<Location[]> {
-    const q = query(
-      collections.locations(organizationId),
-      orderBy('isPrimary', 'desc'),
-      orderBy('name')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
+    // Query without orderBy to avoid composite index requirement
+    const snapshot = await getDocs(collections.locations(organizationId));
+    const locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
+
+    // Sort in-memory: primary locations first, then by name
+    return locations.sort((a, b) => {
+      // Primary locations come first
+      if (a.isPrimary && !b.isPrimary) return -1;
+      if (!a.isPrimary && b.isPrimary) return 1;
+      // Then sort by name
+      return (a.name || '').localeCompare(b.name || '');
+    });
   },
 
   /**

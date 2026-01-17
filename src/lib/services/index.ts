@@ -7,3 +7,4 @@ export { leaveService } from './leave.service';
 export { scheduleService } from './schedule.service';
 export { payrollService } from './payroll.service';
 export { emailService } from './email.service';
+export { storageService } from './storage.service';

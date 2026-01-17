@@ -3,16 +3,20 @@ import React from 'react';
 
 export const PLANS = [
   {
+    id: 'Essential',
     name: 'Essential',
     price: 'KES 8,000',
+    priceKES: 800000,
     locations: 1,
     staff: 10,
     admins: 2,
     features: ['Basic Scheduling', 'Attendance', 'CSV Exports']
   },
   {
+    id: 'Professional',
     name: 'Professional',
     price: 'KES 15,000',
+    priceKES: 1500000,
     locations: 2,
     staff: 30,
     admins: 5,
@@ -20,8 +24,10 @@ export const PLANS = [
     features: ['Advanced Scheduling', 'Payroll mapping', 'Multiple Branches']
   },
   {
+    id: 'Enterprise',
     name: 'Enterprise',
     price: 'KES 25,000',
+    priceKES: 2500000,
     locations: 5,
     staff: 75,
     admins: 10,
@@ -29,6 +35,10 @@ export const PLANS = [
   }
 ];
 
+/**
+ * @deprecated MOCK_USER is deprecated and should not be used.
+ * Use AuthContext.user instead for real user data.
+ */
 export const MOCK_USER: any = {
   id: 'u1',
   firstName: 'John',
@@ -39,6 +49,10 @@ export const MOCK_USER: any = {
   avatar: 'https://picsum.photos/seed/user1/200'
 };
 
+/**
+ * @deprecated MOCK_ORG is deprecated and should not be used.
+ * Use organizationService.getById() for real organization data.
+ */
 export const MOCK_ORG: any = {
   id: 'org1',
   name: 'Acme Health Clinic',

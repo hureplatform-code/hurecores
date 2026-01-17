@@ -4,9 +4,11 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import AcceptInvite from './pages/AcceptInvite';
 import EmployerDashboard from './pages/EmployerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
-import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import SuperAdminLogin from './pages/SuperAdminLogin';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 const AppRoutes: React.FC = () => {
@@ -17,6 +19,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
+      <Route path="/super-login" element={<SuperAdminLogin />} />
 
       {/* Protected Employer Routes */}
       <Route
@@ -46,10 +50,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/admin/*"
         element={
-          user?.role === 'SuperAdmin' ? (
-            <AdminDashboard user={user} />
+          user?.isSuperAdmin || user?.role === 'SuperAdmin' ? ( // Handle both property styles
+            <SuperAdminDashboard />
           ) : (
-            <Navigate to="/login" replace />
+            <Navigate to="/super-login" replace />
           )
         }
       />

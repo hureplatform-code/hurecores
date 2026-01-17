@@ -12,35 +12,7 @@ const Home: React.FC = () => {
       <Navbar />
       <Hero />
       <Features />
-      {/* Short Testimonial / Social Proof Section */}
-      <section id="solutions" className="bg-slate-900 py-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-white font-bold text-2xl mb-12 opacity-60">TRUSTED BY INNOVATIVE CLINICS ACROSS THE REGION</h2>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-slate-900 to-transparent z-10"></div>
-            <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-900 to-transparent z-10"></div>
-            <div className="flex justify-center space-x-12 opacity-40 grayscale">
-              {/* Mock logos */}
-              <div className="text-2xl text-white font-display font-bold">MEDICARE+</div>
-              <div className="text-2xl text-white font-display font-bold">Clinix</div>
-              <div className="text-2xl text-white font-display font-bold">HealthFirst</div>
-              <div className="text-2xl text-white font-display font-bold">DOC.AI</div>
-              <div className="text-2xl text-white font-display font-bold">PharmaLink</div>
-            </div>
-          </div>
-
-          <div className="mt-20 max-w-4xl mx-auto bg-white/10 backdrop-blur-sm border border-white/10 p-10 rounded-3xl">
-            <div className="text-2xl md:text-3xl font-medium text-white mb-6 leading-relaxed">"HURE Core has completely transformed how we manage our shifts. We've cut scheduling time by 80% and our staff love the transparency."</div>
-            <div className="flex items-center justify-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-full"></div>
-              <div className="text-left">
-                <div className="text-white font-bold">Dr. Sarah Johnson</div>
-                <div className="text-blue-200 text-sm">Medical Director, Nairobi West Clinic</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Features />
       <Pricing />
       <FAQ />
 

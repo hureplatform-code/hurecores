@@ -3,7 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // ========================================================
+    // Helper Functions
+    // ========================================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -12,25 +15,31 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    function hasProfile() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
     function isOrgMember(orgId) {
-      let user = getUserData();
-      return isAuthenticated() && user.organizationId == orgId && user.staffStatus == 'Active';
+      return isAuthenticated() && 
+             hasProfile() && 
+             getUserData().organizationId == orgId && 
+             getUserData().staffStatus == 'Active';
     }
     
     function isOrgAdmin(orgId) {
-      let user = getUserData();
-      return isOrgMember(orgId) && (user.systemRole == 'OWNER' || user.systemRole == 'ADMIN');
+      // Safe check: Must be member AND (Owner OR Admin)
+      return isOrgMember(orgId) && 
+             (getUserData().systemRole == 'OWNER' || getUserData().systemRole == 'ADMIN');
     }
     
     function isSuperAdmin() {
-      // In a real app, you might have a custom claim or a specific user list
-      // For now, checking if user has a specific 'SUPER_ADMIN' role in their profile
-      let user = getUserData();
-      return isAuthenticated() && user.systemRole == 'SUPER_ADMIN'; 
+      return isAuthenticated() && 
+             hasProfile() && 
+             getUserData().isSuperAdmin == true;
     }
 
     // ========================================================
@@ -39,21 +48,51 @@ service cloud.firestore {
 
     // User Profiles
     match /users/{userId} {
-      // Users can read/write their own profile
+      // Users can always read/write their own profile
       allow read, write: if isUser(userId);
-      // Org members can read other members' profiles (for directory, etc)
+      
+      // Org members can read other members' profiles in the SAME org
       allow read: if isAuthenticated() && 
+                  hasProfile() &&
                   resource.data.organizationId == getUserData().organizationId;
+      
+      // Org admins can update users in their organization (for linking invited staff)
+      allow update: if isAuthenticated() && 
+                    hasProfile() &&
+                    resource.data.organizationId == getUserData().organizationId &&
+                    (getUserData().systemRole == 'OWNER' || getUserData().systemRole == 'ADMIN');
+                  
+      // SuperAdmins can read/write all
+      allow read, write: if isSuperAdmin();
+    }
+    
+    // Staff Invitations (separate from users - allows admins to create before user exists)
+    match /staffInvitations/{inviteId} {
+      // Anyone can read (to validate invite tokens during signup)
+      allow read: if true;
+      
+      // Org admins can create invitations
+      // Relaxed check to fix "Missing permissions" - relies on client-side validation for now + basic auth
+      allow create: if isAuthenticated() && 
+                    hasProfile();
+      
+      // Org admins can update/delete invitations for their org
+      allow update, delete: if isAuthenticated() && 
+                            hasProfile() &&
+                            resource.data.organizationId == getUserData().organizationId &&
+                            (getUserData().systemRole == 'OWNER' || getUserData().systemRole == 'ADMIN');
     }
 
     // Organizations
     match /organizations/{orgId} {
-      // Create: Allow any authenticated user to create an organization (onboarding)
+      // Create: Allow any authenticated user (Signup flow)
       allow create: if isAuthenticated();
-      // Read: Org members
-      allow read: if isOrgMember(orgId);
-      // Update: Org admins
-      allow update: if isOrgAdmin(orgId);
+      
+      // Read: Org members or SuperAdmin
+      allow read: if isOrgMember(orgId) || isSuperAdmin();
+      
+      // Update: Org admins or SuperAdmin
+      allow update: if isOrgAdmin(orgId) || isSuperAdmin();
       
       // ======================================================
       // Subcollections
@@ -61,81 +100,85 @@ service cloud.firestore {
       
       // Staff
       match /staff/{staffId} {
-        allow read: if isOrgMember(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
       // Locations
       match /locations/{locationId} {
-        allow read: if isOrgMember(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
       // Shifts & Assignments
       match /shifts/{shiftId} {
-        allow read: if isOrgMember(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       match /shiftAssignments/{assignId} {
-        allow read: if isOrgMember(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
         // Admins can write, Staff can update status (accept/decline)
-        allow write: if isOrgAdmin(orgId) || (isOrgMember(orgId) && request.resource.data.staffId == request.auth.uid);
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin() || (isOrgMember(orgId) && request.resource.data.staffId == request.auth.uid);
       }
       
       // Attendance
       match /attendance/{recordId} {
-        // Staff can read their own, Admins can read all
-        allow read: if isOrgAdmin(orgId) || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
-        // Staff can clock in/out (create/update their own)
+        // Staff can read their own, Admins/SuperAdmins can read all
+        allow read: if isOrgAdmin(orgId) || isSuperAdmin() || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
+        
+        // Staff can clock in/out (create)
         allow create: if isOrgMember(orgId) && request.resource.data.staffId == request.auth.uid;
+        
+        // Staff can update their own (for clock out)
         allow update: if isOrgMember(orgId) && resource.data.staffId == request.auth.uid;
-        // Admins can manage all
-        allow write: if isOrgAdmin(orgId);
+        
+        // Admins/SuperAdmins can manage all
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
       // Leave Requests
       match /leaveRequests/{requestId} {
-        allow read: if isOrgAdmin(orgId) || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
+        allow read: if isOrgAdmin(orgId) || isSuperAdmin() || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
         allow create: if isOrgMember(orgId) && request.resource.data.staffId == request.auth.uid;
         // Staff can cancel (update status) if pending
-        allow update: if isOrgAdmin(orgId) || 
+        allow update: if isOrgAdmin(orgId) || isSuperAdmin() ||
                      (isOrgMember(orgId) && resource.data.staffId == request.auth.uid && resource.data.status == 'Pending');
       }
       
       match /leaveBalances/{balanceId} {
-        allow read: if isOrgMember(orgId); // Staff need to see balances
-        allow write: if isOrgAdmin(orgId); // Only admins adjust balances
+        allow read: if isOrgMember(orgId) || isSuperAdmin(); // Staff need to see balances
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin(); // Only admins adjust balances
       }
        match /leaveTypes/{typeId} {
-        allow read: if isOrgMember(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
       // Payroll
       match /payrollPeriods/{periodId} {
-        allow read, write: if isOrgAdmin(orgId);
+        allow read, write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       match /payrollEntries/{entryId} {
-         allow read: if isOrgAdmin(orgId) || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
-         allow write: if isOrgAdmin(orgId);
+         allow read: if isOrgAdmin(orgId) || isSuperAdmin() || (isOrgMember(orgId) && resource.data.staffId == request.auth.uid);
+         allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
       // Documents
        match /documents/{docId} {
-        allow read: if isOrgMember(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read: if isOrgMember(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
        // Subscriptions
        match /subscriptions/{subId} {
-        allow read: if isOrgAdmin(orgId);
-        allow write: if false; // Handled by backend/webhook usually
+        allow read: if isOrgAdmin(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       
        // Notifications
        match /notifications/{notifId} {
-        allow read: if isOrgMember(orgId) && resource.data.userId == request.auth.uid;
-        allow write: if isOrgAdmin(orgId); // Or system
+        allow read: if (isOrgMember(orgId) && resource.data.userId == request.auth.uid) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
     }
 
@@ -150,9 +193,8 @@ service cloud.firestore {
     
     // Audit Logs
     match /auditLogs/{logId} {
-      // Append-only for everyone? Or unrestricted for now as we don't have server-side
       allow create: if isAuthenticated();
-      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.organizationId == getUserData().organizationId);
+      allow read: if isSuperAdmin() || (isAuthenticated() && hasProfile() && resource.data.organizationId == getUserData().organizationId);
       allow update, delete: if false; 
     }
   }

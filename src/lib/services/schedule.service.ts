@@ -32,10 +32,11 @@ export const scheduleService = {
     endDate?: string;
     date?: string;
   }): Promise<Shift[]> {
+    // Use single orderBy to avoid composite index requirement
+    // startTime sorting done client-side
     const q = query(
       collections.shifts(organizationId),
-      orderBy('date', 'asc'),
-      orderBy('startTime', 'asc')
+      orderBy('date', 'asc')
     );
 
     const snapshot = await getDocs(q);
@@ -69,6 +70,12 @@ export const scheduleService = {
     if (filters?.endDate) {
       shifts = shifts.filter(s => s.date <= filters.endDate!);
     }
+
+    // Sort by startTime client-side (avoiding composite index)
+    shifts.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.startTime || '').localeCompare(b.startTime || '');
+    });
 
     return shifts;
   },

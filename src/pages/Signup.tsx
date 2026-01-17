@@ -39,6 +39,11 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Verification State
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+
   const [formData, setFormData] = useState<SignupFormData>({
     orgName: '',
     orgEmail: '',
@@ -104,13 +109,69 @@ const Signup: React.FC = () => {
     return true;
   };
 
-  const handleNext = () => {
+  const handleSendOTP = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await emailService.sendOTP(formData.email, formData.firstName);
+      if (!result.success) {
+        setError(result.error || 'Failed to send verification code.');
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      setError('Failed to send verification code. Please try again.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp || otp.length < 6) {
+      setError('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const result = await emailService.verifyOTP(formData.email, otp);
+      if (result.success && result.verified) {
+        setIsEmailVerified(true);
+        setIsVerifying(false); // Validated, exit verifying mode
+        setStep(3); // Proceed to next step
+      } else {
+        setError(result.error || 'Invalid verification code');
+      }
+    } catch (err: any) {
+      setError('Verification failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNext = async () => {
     if (validateStep()) {
+      // Intercept Step 2 -> 3 for Verification
+      if (step === 2 && !isEmailVerified) {
+        const sent = await handleSendOTP();
+        if (sent) {
+          setIsVerifying(true);
+        }
+        return;
+      }
+
       setStep(prev => prev + 1);
     }
   };
 
   const handleBack = () => {
+    if (isVerifying) {
+      setIsVerifying(false);
+      setError('');
+      return;
+    }
     setStep(prev => prev - 1);
     setError('');
   };
@@ -128,7 +189,9 @@ const Signup: React.FC = () => {
 
       // Step 2: Create organization document
       const orgId = userId + '_org'; // Use deterministic ID for simplicity
-      const planLimits = PLAN_LIMITS[formData.plan];
+
+      const selectedPlan = PLANS.find(p => p.id === formData.plan) || PLANS[1]; // Default to Professional
+      const planLimits = PLAN_LIMITS[selectedPlan.id as SubscriptionPlan] || PLAN_LIMITS['Professional'];
 
       await setDoc(docs.organization(orgId), {
         name: formData.orgName,
@@ -220,6 +283,8 @@ const Signup: React.FC = () => {
         setError('Password is too weak. Please use at least 6 characters.');
       } else if (err.code === 'auth/invalid-email') {
         setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/configuration-not-found') {
+        setError('Sign-up is currently disabled. Please contact support (Email/Password provider not enabled).');
       } else {
         setError(err.message || 'Failed to create account. Please try again.');
       }
@@ -234,10 +299,10 @@ const Signup: React.FC = () => {
         <React.Fragment key={s}>
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${s < step
-                ? 'bg-green-500 text-white'
-                : s === step
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-200 text-slate-500'
+              ? 'bg-green-500 text-white'
+              : s === step
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-200 text-slate-500'
               }`}
           >
             {s < step ? '✓' : s}
@@ -250,6 +315,39 @@ const Signup: React.FC = () => {
           )}
         </React.Fragment>
       ))}
+    </div>
+  );
+
+  const renderVerificationStep = () => (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold text-slate-900">Verify Your Email</h2>
+        <p className="text-slate-500 mt-1">We sent a 6-digit code to <strong>{formData.email}</strong></p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-slate-700 mb-2">
+          Verification Code <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          maxLength={6}
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-2xl tracking-widest"
+          placeholder="000000"
+        />
+      </div>
+
+      <div className="text-center">
+        <button
+          onClick={handleSendOTP}
+          disabled={loading}
+          className="text-blue-600 text-sm hover:text-blue-800 font-semibold"
+        >
+          Resend Code
+        </button>
+      </div>
     </div>
   );
 
@@ -408,8 +506,8 @@ const Signup: React.FC = () => {
             key={plan.id}
             onClick={() => updateFormData('plan', plan.id as SubscriptionPlan)}
             className={`relative p-6 rounded-2xl border-2 cursor-pointer transition-all ${formData.plan === plan.id
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-slate-200 hover:border-slate-300'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-slate-200 hover:border-slate-300'
               }`}
           >
             {plan.id === 'Professional' && (
@@ -527,7 +625,7 @@ const Signup: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900">Create Your Account</h1>
           </div>
 
-          {renderStepIndicator()}
+          {!isVerifying && renderStepIndicator()}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
@@ -535,13 +633,19 @@ const Signup: React.FC = () => {
             </div>
           )}
 
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
+          {!isVerifying && (
+            <>
+              {step === 1 && renderStep1()}
+              {step === 2 && renderStep2()}
+              {step === 3 && renderStep3()}
+              {step === 4 && renderStep4()}
+            </>
+          )}
+
+          {isVerifying && renderVerificationStep()}
 
           <div className="flex justify-between mt-8">
-            {step > 1 ? (
+            {step > 1 || isVerifying ? (
               <button
                 onClick={handleBack}
                 className="px-6 py-3 text-slate-600 font-semibold hover:text-slate-800"
@@ -554,12 +658,20 @@ const Signup: React.FC = () => {
               </Link>
             )}
 
-            {step < 4 ? (
+            {isVerifying ? (
+              <button
+                onClick={handleVerifyOTP}
+                disabled={loading}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-mono"
+              >
+                {loading ? 'Verifying...' : 'Verify Code →'}
+              </button>
+            ) : step < 4 ? (
               <button
                 onClick={handleNext}
                 className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all"
               >
-                Continue →
+                {step === 2 ? 'Verify Email →' : 'Continue →'}
               </button>
             ) : (
               <button

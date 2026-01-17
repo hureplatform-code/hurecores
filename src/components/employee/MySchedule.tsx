@@ -11,13 +11,18 @@ const MySchedule: React.FC = () => {
     const [accepting, setAccepting] = useState<string | null>(null);
 
     useEffect(() => {
-        loadData();
+        if (user) {
+            loadData();
+        }
     }, [user?.organizationId, user?.id]);
 
     const loadData = async () => {
-        if (!user?.organizationId || !user?.id) return;
-
         setLoading(true);
+        if (!user?.organizationId || !user?.id) {
+            setLoading(false);
+            return;
+        }
+
         try {
             // Get user's assignments and available shifts
             const [assignmentsData, availableData] = await Promise.all([
@@ -38,17 +43,14 @@ const MySchedule: React.FC = () => {
 
         setAccepting(shiftId);
         try {
-            const result = await scheduleService.assignStaff(user.organizationId, shiftId, {
+            await scheduleService.assignStaff(user.organizationId, shiftId, {
                 staffId: user.id,
                 isLocum: false
             });
-            if (result.success) {
-                loadData();
-            } else {
-                alert(result.error);
-            }
-        } catch (error) {
+            loadData();
+        } catch (error: any) {
             console.error('Error accepting shift:', error);
+            alert(error.message || 'Failed to accept shift');
         } finally {
             setAccepting(null);
         }
@@ -70,56 +72,84 @@ const MySchedule: React.FC = () => {
         );
     }
 
+    // Logic for top stats
+    const upcomingShiftsCount = myShifts.filter(s => !isPast(s.date)).length;
+    const nextShift = myShifts.filter(s => !isPast(s.date)).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
     return (
-        <div className="p-8 max-w-7xl mx-auto flex flex-col animate-in fade-in duration-500">
-            <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
-                <p className="text-slate-500">View your upcoming shifts and find opportunities to work.</p>
+        <div className="p-6 md:p-8 max-w-7xl mx-auto flex flex-col animate-in fade-in duration-500">
+            {/* Header / Welcome */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">Welcome back, {user?.name?.split(' ')[0]} 👋</h1>
+                    <p className="text-slate-500 mt-1">Here's your schedule overview for this week.</p>
+                </div>
+
+                {/* Quick Stats Cards */}
+                <div className="flex gap-4">
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+                        <div className="bg-blue-50 w-10 h-10 rounded-xl flex items-center justify-center text-blue-600 font-bold">
+                            📅
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-slate-900">{upcomingShiftsCount}</div>
+                            <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Upcoming Shifts</div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            {!user?.organizationId && (
+                <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800">
+                    <h3 className="font-bold text-lg mb-2">⚠️ Profile Incomplete</h3>
+                    <p>We couldn't load your organization profile. This usually happens if you haven't been assigned to an organization yet or if permissions are restricted.</p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Scheduled Shifts */}
                 <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900">📅 Upcoming Shifts</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-slate-900">📅 Upcoming Shifts</h3>
+                    </div>
+
                     <div className="space-y-4">
                         {myShifts.filter(s => !isPast(s.date)).length > 0 ? myShifts.filter(s => !isPast(s.date)).map((shift) => (
-                            <div key={shift.id} className={`bg-white p-6 rounded-2xl border shadow-sm hover:border-blue-300 transition-colors relative overflow-hidden group ${isToday(shift.date) ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'}`}>
+                            <div key={shift.id} className={`bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isToday(shift.date) ? 'border-blue-500 ring-4 ring-blue-50' : 'border-slate-200'}`}>
                                 {isToday(shift.date) && (
-                                    <div className="absolute top-0 right-0 bg-blue-600 text-white px-3 py-1 rounded-bl-xl text-xs font-bold uppercase">
-                                        TODAY
+                                    <div className="mb-4 inline-flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                                        <span>Happening Today</span>
                                     </div>
                                 )}
 
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center justify-center">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center flex-shrink-0">
                                         <span className="text-xs font-bold text-slate-500 uppercase">
                                             {new Date(shift.date).toLocaleDateString('en-US', { weekday: 'short' })}
                                         </span>
-                                        <span className="text-2xl font-bold text-slate-900">
+                                        <span className="text-2xl font-bold text-slate-900 font-display">
                                             {new Date(shift.date).getDate()}
                                         </span>
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                         <div className="font-bold text-slate-900 text-lg">
                                             {new Date(shift.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                         </div>
-                                        <div className="text-slate-600 font-medium font-mono">
+                                        <div className="text-slate-600 font-medium font-mono bg-slate-50 inline-block px-2 py-0.5 rounded-md mt-1 border border-slate-100">
                                             {shift.startTime} - {shift.endTime}
                                         </div>
-                                        <div className="text-sm text-slate-500 mt-1 flex items-center">
-                                            <span className="mr-1">📍</span> {shift.location?.name || 'Unknown Location'}
+                                        <div className="text-sm text-slate-500 mt-3 flex items-center">
+                                            <span className="mr-1.5 opacity-70">📍</span> {shift.location?.name || 'Main Location'}
                                         </div>
-                                        {shift.roleRequired && (
-                                            <span className="inline-block mt-2 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">
-                                                {shift.roleRequired}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             </div>
                         )) : (
-                            <div className="p-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 italic">
-                                No upcoming shifts scheduled.
+                            <div className="p-10 bg-white border border-dashed border-slate-200 rounded-3xl text-center">
+                                <div className="text-4xl mb-4">☕</div>
+                                <h3 className="text-slate-900 font-bold mb-1">No upcoming shifts</h3>
+                                <p className="text-slate-500 text-sm">You're all caught up! Check available shifts to pick up more work.</p>
                             </div>
                         )}
                     </div>
@@ -127,38 +157,42 @@ const MySchedule: React.FC = () => {
 
                 {/* Available Shifts */}
                 <div className="space-y-6">
-                    <h3 className="text-lg font-bold text-slate-900">✨ Available to Pick Up</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-slate-900">✨ Available to Pick Up</h3>
+                        <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-lg">{availableShifts.length} New</span>
+                    </div>
+
                     <div className="space-y-4">
                         {availableShifts.length > 0 ? availableShifts.map((shift) => (
-                            <div key={shift.id} className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
-                                <div className="relative z-10 flex justify-between items-center">
+                            <div key={shift.id} className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300">
+                                <div className="relative z-10 flex justify-between items-center gap-4">
                                     <div>
-                                        <div className="font-bold text-lg">
+                                        <div className="font-bold text-lg mb-1">
                                             {new Date(shift.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                                         </div>
-                                        <div className="text-slate-300 font-mono mt-1">{shift.startTime} - {shift.endTime}</div>
-                                        <div className="text-sm text-slate-400 mt-2 flex items-center">
-                                            <span className="mr-1">📍</span> {shift.location?.name}
-                                            {shift.roleRequired && (
-                                                <span className="text-blue-300 font-bold ml-2">• {shift.roleRequired}</span>
-                                            )}
+                                        <div className="text-blue-200 font-mono text-sm bg-white/10 px-2 py-1 rounded-lg inline-block border border-white/10">
+                                            {shift.startTime} - {shift.endTime}
+                                        </div>
+                                        <div className="text-sm text-slate-400 mt-3 flex items-center">
+                                            <span className="mr-2 opacity-70">📍</span> {shift.location?.name}
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => handleAcceptShift(shift.id)}
                                         disabled={accepting === shift.id}
-                                        className="bg-white text-slate-900 px-5 py-2 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg disabled:opacity-50"
+                                        className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg disabled:opacity-50 whitespace-nowrap"
                                     >
-                                        {accepting === shift.id ? 'Accepting...' : 'Accept'}
+                                        {accepting === shift.id ? '...' : 'Accept'}
                                     </button>
                                 </div>
-                                {/* Decorative blobs */}
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-                                <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500 opacity-10 rounded-full blur-xl translate-y-1/2 -translate-x-1/2"></div>
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"></div>
+                                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"></div>
                             </div>
                         )) : (
-                            <div className="p-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 italic">
-                                No open shifts available at the moment.
+                            <div className="p-10 bg-slate-50 border border-dashed border-slate-200 rounded-3xl text-center">
+                                <div className="text-4xl mb-4 opacity-50">📅</div>
+                                <h3 className="text-slate-900 font-bold mb-1">No shifts available</h3>
+                                <p className="text-slate-500 text-sm">Check back later for new opportunities.</p>
                             </div>
                         )}
                     </div>

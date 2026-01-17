@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HURE Core - Create Super Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 480px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        p {
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .warning strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Create Super Admin</h1>
+        <p>Create a platform-wide Super Admin account for HURE Core.</p>
+
+        <div class="warning">
+            <strong>⚠️ Security Notice</strong>
+            This creates a Super Admin with full platform access. Use a strong password and keep credentials secure.
+        </div>
+
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="fullName" placeholder="Super Admin" value="Super Admin">
+        </div>
+
+        <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="admin@hurecore.com">
+        </div>
+
+        <div class="form-group">
+            <label>Password (min. 6 characters)</label>
+            <input type="password" id="password" placeholder="Enter a strong password">
+        </div>
+
+        <button id="createBtn" onclick="createSuperAdmin()">Create Super Admin Account</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB90Dc0mXjktNuHy2qeMsmVszTz_NHai5g",
+            authDomain: "hurecore-cd39e.firebaseapp.com",
+            projectId: "hurecore-cd39e",
+            storageBucket: "hurecore-cd39e.firebasestorage.app",
+            messagingSenderId: "435515143399",
+            appId: "1:435515143399:web:aab023b0d8bbdabbc01e42",
+            measurementId: "G-3K6V9WKLMQ"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        async function createSuperAdmin() {
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('createBtn');
+
+            if (!email || !password || !fullName) {
+                resultDiv.innerHTML = '<div class="result error">Please fill in all fields.</div>';
+                return;
+            }
+
+            if (password.length < 6) {
+                resultDiv.innerHTML = '<div class="result error">Password must be at least 6 characters.</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            resultDiv.innerHTML = '<div class="result info">Creating Super Admin account...</div>';
+
+            try {
+                // Create Firebase Auth user
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const userId = userCredential.user.uid;
+
+                // Create user profile with isSuperAdmin = true
+                await db.collection('users').doc(userId).set({
+                    id: userId,
+                    email: email,
+                    fullName: fullName,
+                    firstName: fullName.split(' ')[0],
+                    lastName: fullName.split(' ').slice(1).join(' ') || '',
+                    systemRole: 'OWNER',
+                    jobTitle: 'Platform Super Admin',
+                    employmentType: 'Full-Time',
+                    staffStatus: 'Active',
+                    isSuperAdmin: true,
+                    organizationId: null, // Platform-level, no org
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ Super Admin Created Successfully!</strong><br><br>
+                        <strong>Email:</strong> ${email}<br>
+                        <strong>User ID:</strong> ${userId}<br><br>
+                        You can now log in at:<br>
+                        <a href="http://localhost:3000/#/login" target="_blank">http://localhost:3000/#/login</a><br><br>
+                        After login, you'll be redirected to the Super Admin dashboard.
+                    </div>
+                `;
+
+                // Sign out after creation
+                await auth.signOut();
+
+            } catch (error) {
+                console.error('Error:', error);
+                let errorMsg = error.message;
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMsg = 'This email is already registered. Try logging in or use a different email.';
+                }
+                resultDiv.innerHTML = `<div class="result error"><strong>Error:</strong> ${errorMsg}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Super Admin Account';
+            }
+        }
+    </script>
+</body>
+
+</html>

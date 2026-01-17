@@ -81,8 +81,8 @@ const PermissionsDialog: React.FC<{
                         <label
                             key={key}
                             className={`flex items-start p-4 rounded-xl border cursor-pointer transition-colors ${permissions[key as keyof StaffPermissions]
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-slate-200 hover:border-slate-300'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-slate-200 hover:border-slate-300'
                                 }`}
                         >
                             <input
@@ -154,6 +154,7 @@ const StatusBadge: React.FC<{ status: StaffStatus }> = ({ status }) => {
 const StaffManagement: React.FC = () => {
     const { user } = useAuth();
     const [staff, setStaff] = useState<Profile[]>([]);
+    const [pendingInvites, setPendingInvites] = useState<any[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -189,18 +190,40 @@ const StaffManagement: React.FC = () => {
 
         setLoading(true);
         try {
-            const [staffData, locationsData, seatData] = await Promise.all([
+            const [staffData, locationsData, seatData, invitesData] = await Promise.all([
                 staffService.getAll(user.organizationId),
                 organizationService.getLocations(user.organizationId),
-                staffService.checkAdminSeatAvailability(user.organizationId)
+                staffService.checkAdminSeatAvailability(user.organizationId),
+                staffService.getPendingInvitations(user.organizationId)
             ]);
             setStaff(staffData);
             setLocations(locationsData);
             setAdminSeats({ used: seatData.used, max: seatData.max });
+            setPendingInvites(invitesData);
         } catch (error) {
             console.error('Error loading staff:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResendInvite = async (inviteId: string) => {
+        const result = await staffService.resendInvitation(inviteId);
+        if (result.success) {
+            alert('Invitation resent successfully!');
+        } else {
+            alert(result.error || 'Failed to resend invitation');
+        }
+    };
+
+    const handleCancelInvite = async (inviteId: string) => {
+        if (!confirm('Are you sure you want to cancel this invitation?')) return;
+
+        const result = await staffService.cancelInvitation(inviteId);
+        if (result.success) {
+            loadData(); // Reload to update the list
+        } else {
+            alert(result.error || 'Failed to cancel invitation');
         }
     };
 
@@ -470,7 +493,7 @@ const StaffManagement: React.FC = () => {
                     </tbody>
                 </table>
 
-                {visibleStaff.length === 0 && (
+                {visibleStaff.length === 0 && pendingInvites.length === 0 && (
                     <div className="p-12 text-center">
                         <div className="text-4xl mb-4">👥</div>
                         <h3 className="text-lg font-semibold text-slate-900 mb-2">No staff members yet</h3>
@@ -484,6 +507,71 @@ const StaffManagement: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Pending Invitations Section */}
+            {pendingInvites.length > 0 && (
+                <div className="mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-amber-50">
+                        <h3 className="font-semibold text-amber-800">
+                            📩 Pending Invitations ({pendingInvites.length})
+                        </h3>
+                        <p className="text-sm text-amber-600 mt-1">
+                            These people have been invited but haven't accepted yet
+                        </p>
+                    </div>
+                    <table className="w-full">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Name</th>
+                                <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Email</th>
+                                <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Role</th>
+                                <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Expires</th>
+                                <th className="text-right px-6 py-3 text-sm font-semibold text-slate-600">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {pendingInvites.map((invite) => (
+                                <tr key={invite.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold">
+                                                {invite.fullName?.charAt(0) || '?'}
+                                            </div>
+                                            <span className="font-medium text-slate-900">{invite.fullName}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-600">{invite.email}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${invite.systemRole === 'ADMIN'
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-slate-100 text-slate-600'
+                                            }`}>
+                                            {invite.systemRole}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-500">
+                                        {new Date(invite.expiresAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            onClick={() => handleResendInvite(invite.id)}
+                                            className="text-blue-600 hover:text-blue-700 text-sm font-medium mr-3"
+                                        >
+                                            Resend
+                                        </button>
+                                        <button
+                                            onClick={() => handleCancelInvite(invite.id)}
+                                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Add Staff Modal */}
             {showAddModal && (

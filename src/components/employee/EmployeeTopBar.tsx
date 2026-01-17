@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { organizationService } from '../../lib/services/organization.service';
+import type { Organization } from '../../types';
 
 interface EmployeeTopBarProps {
     user: any;
@@ -10,6 +12,25 @@ interface EmployeeTopBarProps {
 const EmployeeTopBar: React.FC<EmployeeTopBarProps> = ({ user, sidebarOpen, setSidebarOpen }) => {
     const { logout } = useAuth();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [organization, setOrganization] = useState<Organization | null>(null);
+
+    useEffect(() => {
+        if (user?.organizationId) {
+            loadOrganization();
+        }
+    }, [user?.organizationId]);
+
+    const loadOrganization = async () => {
+        if (!user?.organizationId) return;
+        try {
+            const org = await organizationService.getById(user.organizationId);
+            setOrganization(org);
+        } catch (err) {
+            console.error('Error loading organization:', err);
+        }
+    };
+
+    const orgName = organization?.name || 'Your Organization';
 
     return (
         <header className="bg-white border-b border-slate-200 h-16 px-4 flex items-center justify-between sticky top-0 z-10 w-full">
@@ -25,7 +46,7 @@ const EmployeeTopBar: React.FC<EmployeeTopBarProps> = ({ user, sidebarOpen, setS
 
                 <div className="hidden md:flex items-center text-slate-900 font-bold text-lg">
                     <span className="mr-2">🏥</span>
-                    <span>MedCare Clinics Group</span>
+                    <span>{orgName}</span>
                 </div>
             </div>
 
