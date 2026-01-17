@@ -14,6 +14,8 @@ import ManagerStaff from '../components/employee/ManagerStaff';
 import ManagerLeave from '../components/employee/ManagerLeave';
 import ManagerPayroll from '../components/employee/ManagerPayroll';
 import ManagerDocuments from '../components/employee/ManagerDocuments';
+import ManagerAttendance from '../components/employee/ManagerAttendance';
+import ManagerSettings from '../components/employee/ManagerSettings';
 
 interface EmployeeDashboardProps {
    user: any;
@@ -70,9 +72,9 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
                            <Route path="/manager/schedule" element={<ManagerSchedule />} />
                         )}
 
-                        {/* Attendance - reuse manager attendance if exists, else show placeholder */}
+                        {/* Attendance */}
                         {(isOwner || permissions?.attendance) && (
-                           <Route path="/manager/attendance" element={<ManagerDashboard />} />
+                           <Route path="/manager/attendance" element={<ManagerAttendance />} />
                         )}
 
                         {/* Leave Approvals */}
@@ -92,7 +94,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
 
                         {/* Settings */}
                         {(isOwner || permissions?.settingsAdmin) && (
-                           <Route path="/manager/settings" element={<ManagerDashboard />} />
+                           <Route path="/manager/settings" element={<ManagerSettings />} />
                         )}
                      </>
                   )}
