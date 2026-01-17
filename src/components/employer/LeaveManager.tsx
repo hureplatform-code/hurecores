@@ -98,6 +98,13 @@ const LeaveManager: React.FC = () => {
     };
 
     const pendingCount = requests.filter(r => r.status === 'Pending').length;
+    const approvedCount = requests.filter(r => r.status === 'Approved').length;
+    const rejectedCount = requests.filter(r => r.status === 'Rejected').length;
+    const totalStaffOnLeave = requests.filter(r => {
+        if (r.status !== 'Approved') return false;
+        const today = new Date().toISOString().split('T')[0];
+        return today >= r.startDate && today <= r.endDate;
+    }).length;
 
     if (loading && requests.length === 0) {
         return (
@@ -113,8 +120,28 @@ const LeaveManager: React.FC = () => {
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900">Leave Management</h2>
                     <p className="text-slate-500 mt-1">
-                        {pendingCount > 0 ? `${pendingCount} pending request${pendingCount > 1 ? 's' : ''}` : 'No pending requests'}
+                        {pendingCount > 0 ? `${pendingCount} pending request${pendingCount > 1 ? 's' : ''} require attention` : 'All requests processed'}
                     </p>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                    <div className="text-3xl font-bold text-amber-600">{pendingCount}</div>
+                    <div className="text-sm font-medium text-amber-700">Pending Requests</div>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                    <div className="text-3xl font-bold text-emerald-600">{approvedCount}</div>
+                    <div className="text-sm font-medium text-emerald-700">Approved</div>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+                    <div className="text-3xl font-bold text-red-600">{rejectedCount}</div>
+                    <div className="text-sm font-medium text-red-700">Rejected</div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                    <div className="text-3xl font-bold text-blue-600">{totalStaffOnLeave}</div>
+                    <div className="text-sm font-medium text-blue-700">On Leave Today</div>
                 </div>
             </div>
 
@@ -125,8 +152,8 @@ const LeaveManager: React.FC = () => {
                         key={status}
                         onClick={() => setFilter(status)}
                         className={`px-4 py-2 rounded-xl font-medium transition-colors ${filter === status
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                     >
                         {status === 'all' ? 'All' : status}

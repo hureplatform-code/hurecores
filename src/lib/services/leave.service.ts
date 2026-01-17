@@ -181,6 +181,27 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
+    // Update pending days in leave balance
+    try {
+      const balanceQuery = query(
+        collections.leaveBalances(organizationId),
+        where('staffId', '==', input.staffId),
+        where('leaveTypeId', '==', input.leaveTypeId),
+        where('year', '==', new Date().getFullYear())
+      );
+      const balanceSnapshot = await getDocs(balanceQuery);
+      if (!balanceSnapshot.empty) {
+        const balanceDoc = balanceSnapshot.docs[0];
+        const currentBalance = balanceDoc.data();
+        await updateDoc(balanceDoc.ref, {
+          pendingDays: (currentBalance.pendingDays || 0) + daysRequested,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (balanceError) {
+      console.error('Error updating pending balance:', balanceError);
+    }
+
     const request = await this.getRequestById(organizationId, docRef.id);
     return { success: true, request: request! };
   },
@@ -210,6 +231,28 @@ export const leaveService = {
       approvalComment: comment || null,
       updatedAt: serverTimestamp()
     });
+
+    // Update leave balance - increment usedDays, decrement pendingDays
+    try {
+      const balanceQuery = query(
+        collections.leaveBalances(organizationId),
+        where('staffId', '==', request.staffId),
+        where('leaveTypeId', '==', request.leaveTypeId),
+        where('year', '==', new Date().getFullYear())
+      );
+      const balanceSnapshot = await getDocs(balanceQuery);
+      if (!balanceSnapshot.empty) {
+        const balanceDoc = balanceSnapshot.docs[0];
+        const currentBalance = balanceDoc.data();
+        await updateDoc(balanceDoc.ref, {
+          usedDays: (currentBalance.usedDays || 0) + request.daysRequested,
+          pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (balanceError) {
+      console.error('Error updating leave balance:', balanceError);
+    }
 
     // Add audit log
     await addAuditLog(
@@ -248,6 +291,27 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
+    // Restore pending balance (decrement pendingDays)
+    try {
+      const balanceQuery = query(
+        collections.leaveBalances(organizationId),
+        where('staffId', '==', request.staffId),
+        where('leaveTypeId', '==', request.leaveTypeId),
+        where('year', '==', new Date().getFullYear())
+      );
+      const balanceSnapshot = await getDocs(balanceQuery);
+      if (!balanceSnapshot.empty) {
+        const balanceDoc = balanceSnapshot.docs[0];
+        const currentBalance = balanceDoc.data();
+        await updateDoc(balanceDoc.ref, {
+          pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (balanceError) {
+      console.error('Error restoring pending balance:', balanceError);
+    }
+
     return { success: true };
   },
 
@@ -269,6 +333,27 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
+    // Restore pending balance (decrement pendingDays)
+    try {
+      const balanceQuery = query(
+        collections.leaveBalances(organizationId),
+        where('staffId', '==', request.staffId),
+        where('leaveTypeId', '==', request.leaveTypeId),
+        where('year', '==', new Date().getFullYear())
+      );
+      const balanceSnapshot = await getDocs(balanceQuery);
+      if (!balanceSnapshot.empty) {
+        const balanceDoc = balanceSnapshot.docs[0];
+        const currentBalance = balanceDoc.data();
+        await updateDoc(balanceDoc.ref, {
+          pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (balanceError) {
+      console.error('Error restoring pending balance:', balanceError);
+    }
+
     return { success: true };
   },
 
@@ -288,9 +373,11 @@ export const leaveService = {
 
   /**
    * Get current user's leave requests
+   * @param organizationId - Organization ID
+   * @param staffId - Optional staff ID (uses current user if not provided)
    */
-  async getMyLeaveRequests(organizationId: string): Promise<LeaveRequest[]> {
-    const userId = auth.currentUser?.uid;
+  async getMyLeaveRequests(organizationId: string, staffId?: string): Promise<LeaveRequest[]> {
+    const userId = staffId || auth.currentUser?.uid;
     if (!userId) return [];
 
     return this.getLeaveRequests(organizationId, { staffId: userId });
@@ -299,9 +386,9 @@ export const leaveService = {
   // ==================== LEAVE BALANCES ====================
 
   /**
-   * Get leave balances for a staff member
+   * Get leave balances for a staff member with computed properties
    */
-  async getStaffBalances(organizationId: string, staffId: string, year?: number): Promise<LeaveBalance[]> {
+  async getStaffBalances(organizationId: string, staffId: string, year?: number): Promise<(LeaveBalance & { remaining: number; allocated: number; used: number })[]> {
     const currentYear = year || new Date().getFullYear();
 
     const q = query(
@@ -313,12 +400,21 @@ export const leaveService = {
     const snapshot = await getDocs(q);
     const balances = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveBalance));
 
-    // Fetch leave type details
+    // Fetch leave type details and compute remaining days
     const leaveTypes = await this.getLeaveTypes(organizationId);
-    return balances.map(balance => ({
-      ...balance,
-      leaveType: leaveTypes.find(t => t.id === balance.leaveTypeId)
-    }));
+    return balances.map(balance => {
+      const allocated = balance.totalDays || 0;
+      const used = balance.usedDays || 0;
+      const pending = balance.pendingDays || 0;
+      const remaining = Math.max(0, allocated - used - pending);
+      return {
+        ...balance,
+        leaveType: leaveTypes.find(t => t.id === balance.leaveTypeId),
+        allocated,
+        used,
+        remaining
+      };
+    });
   },
 
   /**
