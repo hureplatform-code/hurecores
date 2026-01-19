@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { attendanceService, settingsService } from '../../lib/services';
-import type { AttendanceRecord, AttendanceStatus, OrganizationSettings } from '../../types';
+import { attendanceService, settingsService, staffService } from '../../lib/services';
+import type { AttendanceRecord, AttendanceStatus, OrganizationSettings, Profile } from '../../types';
 
 const MyAttendance: React.FC = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState<Profile | null>(null);
     const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
     const [history, setHistory] = useState<AttendanceRecord[]>([]);
-    const [summary, setSummary] = useState({ totalHours: 0, daysWorked: 0, onTimePercentage: 0 });
+    const [summary, setSummary] = useState({ totalHours: 0, daysWorked: 0, onTimePercentage: 0, missedClockOuts: 0 });
     const [settings, setSettings] = useState<OrganizationSettings | null>(null);
 
     // Action states
@@ -35,13 +36,16 @@ const MyAttendance: React.FC = () => {
         try {
             const today = new Date().toISOString().split('T')[0];
 
-            // Load settings and today's record in parallel
-            const [orgSettings, todayRecords] = await Promise.all([
+            // Load settings, profile, and today's record in parallel
+            const [orgSettings, currentUserProfile, todayRecords] = await Promise.all([
                 settingsService.getSettings(user.organizationId),
+                staffService.getById(user.id),
                 attendanceService.getByDateRange(user.organizationId, today, today)
             ]);
 
             setSettings(orgSettings);
+            setProfile(currentUserProfile);
+
             const myTodayRecord = todayRecords.find(r => r.staffId === user.id);
             setTodayRecord(myTodayRecord || null);
 
@@ -62,7 +66,14 @@ const MyAttendance: React.FC = () => {
             const onTimeCount = myHistory.filter(r => r.status === 'Present').length;
             const onTimePercentage = myHistory.length > 0 ? Math.round((onTimeCount / myHistory.length) * 100) : 100;
 
-            setSummary({ totalHours, daysWorked, onTimePercentage });
+            // Calculate missed clock-outs (records with clockIn but no clockOut from previous days)
+            const missedClockOuts = myHistory.filter(r =>
+                r.clockIn &&
+                !r.clockOut &&
+                r.date < today // Only consider past days
+            ).length;
+
+            setSummary({ totalHours, daysWorked, onTimePercentage, missedClockOuts });
         } catch (error) {
             console.error('Error loading attendance:', error);
         } finally {
@@ -79,7 +90,17 @@ const MyAttendance: React.FC = () => {
             loadData();
         } catch (error: any) {
             console.error('Error clocking in:', error);
-            alert(error.message || 'Failed to clock in');
+
+            // Handle specific error codes
+            if (error.code === 'LICENSE_EXPIRED') {
+                alert('⚠️ Cannot Clock In: Your professional license has expired. Please update your profile.');
+            } else if (error.code === 'MISSING_ORG_ID') {
+                alert('⚠️ System Error: Your account is not properly linked to the organization. Please contact support.');
+            } else if (error.code === 'ALREADY_CLOCKED_IN') {
+                alert('⚠️ You are already clocked in.');
+            } else {
+                alert(error.message || 'Failed to clock in');
+            }
         } finally {
             setClockingIn(false);
         }
@@ -179,6 +200,9 @@ const MyAttendance: React.FC = () => {
     const hasUsedLunch = todayRecord?.lunchEnd ? true : false;
     const breakCount = todayRecord?.breakCount || 0;
 
+    // Check if hourly staff
+    const isHourly = profile?.employmentType === 'Hourly';
+
     // Calculate if actions are available based on settings
     const lunchEnabled = settings?.lunch?.enabled ?? false;
     const breaksEnabled = settings?.breaks?.enabled ?? false;
@@ -214,9 +238,9 @@ const MyAttendance: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                 {/* Status Card */}
                 <div className={`p-8 rounded-[2rem] border shadow-lg flex flex-col items-center text-center relative overflow-hidden transition-all duration-500 ${isOnLunch ? 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200' :
-                        isOnBreak ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' :
-                            isOnline ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' :
-                                'bg-white border-slate-200'
+                    isOnBreak ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' :
+                        isOnline ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' :
+                            'bg-white border-slate-200'
                     }`}>
                     {isOnline && <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>}
 
@@ -225,16 +249,16 @@ const MyAttendance: React.FC = () => {
                     </div>
 
                     <div className={`relative w-48 h-48 rounded-full border-8 flex items-center justify-center mb-8 transition-colors duration-500 ${isOnLunch ? 'border-amber-200 bg-white' :
-                            isOnBreak ? 'border-blue-200 bg-white' :
-                                isOnline ? 'border-emerald-200 bg-white' :
-                                    'border-slate-100 bg-slate-50'
+                        isOnBreak ? 'border-blue-200 bg-white' :
+                            isOnline ? 'border-emerald-200 bg-white' :
+                                'border-slate-100 bg-slate-50'
                         } shadow-inner`}>
                         {isOnline && !isOnLunch && !isOnBreak && <div className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-10"></div>}
                         <div className="z-10 flex flex-col items-center">
                             <div className={`text-5xl font-bold font-display ${isOnLunch ? 'text-amber-600' :
-                                    isOnBreak ? 'text-blue-600' :
-                                        isOnline ? 'text-emerald-600' :
-                                            'text-slate-400'
+                                isOnBreak ? 'text-blue-600' :
+                                    isOnline ? 'text-emerald-600' :
+                                        'text-slate-400'
                                 }`}>
                                 {isOnline ? ((Date.now() - new Date(todayRecord?.clockIn || 0).getTime()) / 3600000).toFixed(1) : '--'}
                             </div>
@@ -332,13 +356,16 @@ const MyAttendance: React.FC = () => {
                 <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-center space-y-6">
                     <h3 className="text-xl font-bold text-slate-900">Monthly Performance</h3>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
-                            <div className="flex items-center space-x-4">
-                                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl">⏱️</div>
-                                <span className="font-bold text-slate-600">Total Hours</span>
+                        {isHourly && (
+                            <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl">⏱️</div>
+                                    <span className="font-bold text-slate-600">Total Hours</span>
+                                </div>
+                                <span className="text-2xl font-bold text-slate-900 font-display">{summary.totalHours.toFixed(1)} <span className="text-sm font-medium text-slate-400">hrs</span></span>
                             </div>
-                            <span className="text-2xl font-bold text-slate-900 font-display">{summary.totalHours.toFixed(1)} <span className="text-sm font-medium text-slate-400">hrs</span></span>
-                        </div>
+                        )}
+
                         <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
                             <div className="flex items-center space-x-4">
                                 <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-xl">✅</div>
@@ -346,6 +373,7 @@ const MyAttendance: React.FC = () => {
                             </div>
                             <span className="text-2xl font-bold text-green-600 font-display">{summary.onTimePercentage}%</span>
                         </div>
+
                         <div className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
                             <div className="flex items-center space-x-4">
                                 <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl">🗓️</div>
@@ -353,6 +381,16 @@ const MyAttendance: React.FC = () => {
                             </div>
                             <span className="text-2xl font-bold text-slate-900 font-display">{summary.daysWorked} <span className="text-sm font-medium text-slate-400">days</span></span>
                         </div>
+
+                        {summary.missedClockOuts > 0 && (
+                            <div className="flex justify-between items-center p-5 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors border border-red-100">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-xl text-red-600">⚠️</div>
+                                    <span className="font-bold text-red-800">Missed Clock-Outs</span>
+                                </div>
+                                <span className="text-2xl font-bold text-red-600 font-display">{summary.missedClockOuts}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Today's Activity */}

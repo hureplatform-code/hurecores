@@ -153,6 +153,11 @@ export const staffService = {
         payMethod: input.payMethod || 'Fixed',
         hireDate: input.hireDate || null,
         permissions: input.systemRole === 'ADMIN' ? input.permissions : null,
+        // Professional License
+        licenseType: input.licenseType || null,
+        licenseNumber: input.licenseNumber || null,
+        licenseAuthority: input.licenseAuthority || null,
+        licenseExpiry: input.licenseExpiry || null,
         status: 'pending', // pending, accepted, expired
         invitedBy: auth.currentUser?.uid || null,
         invitedByEmail: auth.currentUser?.email || null,
@@ -252,6 +257,16 @@ export const staffService = {
         hireDate: invitation.hireDate,
         isSuperAdmin: false,
         permissions: invitation.permissions,
+        // Professional License (if provided)
+        license: invitation.licenseType ? {
+          type: invitation.licenseType,
+          number: invitation.licenseNumber || '',
+          authority: invitation.licenseAuthority || '',
+          expiryDate: invitation.licenseExpiry || '',
+          issuedDate: '',
+          verificationStatus: 'Pending',
+          documentUrl: ''
+        } : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });

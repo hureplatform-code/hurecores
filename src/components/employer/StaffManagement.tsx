@@ -184,7 +184,11 @@ const StaffManagement: React.FC = () => {
         monthlySalaryCents: 0,
         dailyRateCents: 0,
         shiftRateCents: 0,
-        payMethod: 'Fixed'
+        payMethod: 'Fixed',
+        licenseType: '',
+        licenseNumber: '',
+        licenseAuthority: '',
+        licenseExpiry: ''
     });
 
     useEffect(() => {
@@ -336,7 +340,11 @@ const StaffManagement: React.FC = () => {
             monthlySalaryCents: 0,
             dailyRateCents: 0,
             shiftRateCents: 0,
-            payMethod: 'Fixed'
+            payMethod: 'Fixed',
+            licenseType: '',
+            licenseNumber: '',
+            licenseAuthority: '',
+            licenseExpiry: ''
         });
         setPendingPermissions(null);
         setError('');
@@ -488,8 +496,8 @@ const StaffManagement: React.FC = () => {
                 <button
                     onClick={() => setStaffTab('active')}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-2 ${staffTab === 'active'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
                         }`}
                 >
                     <span>👥 Active Staff</span>
@@ -497,8 +505,8 @@ const StaffManagement: React.FC = () => {
                 <button
                     onClick={() => setStaffTab('inactive')}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-2 ${staffTab === 'inactive'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
                         }`}
                 >
                     <span>📦 Inactive</span>
@@ -802,6 +810,59 @@ const StaffManagement: React.FC = () => {
                                         ))}
                                     </select>
                                 </div>
+                            </div>
+
+                            {/* License Credentials Section */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <h3 className="text-sm font-bold text-blue-900 mb-3">📋 Professional Credentials (Optional)</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">License Type</label>
+                                        <select
+                                            value={formData.licenseType || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, licenseType: e.target.value }))}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Select License Type</option>
+                                            <option value="KMPDC">Medical License (KMPDC)</option>
+                                            <option value="NCK">Nursing License (NCK)</option>
+                                            <option value="CDK">Clinical Officer (CDK)</option>
+                                            <option value="PPB">Pharmacy License (PPB)</option>
+                                            <option value="KMLTB">Lab Tech License (KMLTB)</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">License Number</label>
+                                        <input
+                                            type="text"
+                                            value={formData.licenseNumber || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, licenseNumber: e.target.value }))}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., A12345"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Licensing Authority</label>
+                                        <input
+                                            type="text"
+                                            value={formData.licenseAuthority || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, licenseAuthority: e.target.value }))}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., Medical Practitioners Board"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">License Expiry Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.licenseExpiry || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, licenseExpiry: e.target.value }))}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-blue-700 mt-3">💡 License credentials can be updated later in the staff profile.</p>
                             </div>
 
                             {/* Compensation fields based on employment type */}

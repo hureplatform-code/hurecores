@@ -60,7 +60,7 @@ const EmployeeTopBar: React.FC<EmployeeTopBarProps> = ({ user, sidebarOpen, setS
                             <div className="text-sm font-bold text-slate-900">{user?.name || 'Guest User'}</div>
                             <div className="text-xs text-slate-500">{user?.role || 'Employee'}</div>
                         </div>
-                        <div className="w-9 h-9 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold border border-blue-200">
+                        <div className="w-9 h-9 bg-[#ccfbf1] text-[#0f766e] rounded-lg flex items-center justify-center font-bold border border-[#99f6e4]">
                             {user?.name ? user.name.split(' ').map((n: string) => n[0]).join('') : 'G'}
                         </div>
                     </button>

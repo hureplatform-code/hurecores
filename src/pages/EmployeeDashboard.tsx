@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import EmployeeSidebar from '../components/employee/EmployeeSidebar';
 import EmployeeTopBar from '../components/employee/EmployeeTopBar';
 
-import TodayMyWork from '../components/employee/TodayMyWork';
+import DashboardView from '../components/employee/EmployeeDashboard';
 import MySchedule from '../components/employee/MySchedule';
 import MyAttendance from '../components/employee/MyAttendance';
 import MyLeave from '../components/employee/MyLeave';
@@ -54,7 +54,8 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
             <main className="flex-1 overflow-y-auto">
                <Routes>
                   {/* Personal Routes - Always available */}
-                  <Route path="/" element={<TodayMyWork />} />
+                  <Route path="/" element={<DashboardView />} />
+                  <Route path="/dashboard" element={<DashboardView />} />
                   <Route path="/schedule" element={<MySchedule />} />
                   <Route path="/attendance" element={<MyAttendance />} />
                   <Route path="/leave" element={<MyLeave />} />

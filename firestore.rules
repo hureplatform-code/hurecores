@@ -187,6 +187,14 @@ service cloud.firestore {
         allow create: if isAuthenticated();
       }
       
+      // Leave Entitlements (per-staff allocations)
+      match /leaveEntitlements/{entitlementId} {
+        allow read: if isOrgStaff(orgId) || isSuperAdmin(); // Staff can see their entitlements
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin(); // Only admins can override allocations
+        // Allow system to create entitlements for new staff
+        allow create: if isAuthenticated();
+      }
+      
       // Payroll
       match /payrollPeriods/{periodId} {
         allow read, write: if isOrgAdmin(orgId) || isSuperAdmin();

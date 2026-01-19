@@ -26,8 +26,9 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
     const showAdminSection = isOwner || (isAdmin && hasAnyAdminPermission);
 
     const personalLinks = [
-        { name: 'My Schedule', path: '/employee', icon: '📅', exact: true },
+        { name: 'Dashboard', path: '/employee', icon: '📊', exact: true },
         { name: 'My Attendance', path: '/employee/attendance', icon: '⏰' },
+        { name: 'My Schedule', path: '/employee/schedule', icon: '📅' },
         { name: 'My Leave', path: '/employee/leave', icon: '🏖️' },
         { name: 'My Profile', path: '/employee/profile', icon: '👤' },
     ];
@@ -115,7 +116,7 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
                                     end={link.exact}
                                     onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
                                     className={({ isActive }) => `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                                        ? 'bg-[#0f766e] text-white shadow-lg shadow-teal-900/50'
                                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
                                         }`}
                                 >
@@ -139,7 +140,7 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({
                                         to={link.path}
                                         onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
                                         className={({ isActive }) => `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                                            ? 'bg-[#0f766e] text-white shadow-lg shadow-teal-900/50'
                                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >

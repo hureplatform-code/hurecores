@@ -137,9 +137,54 @@ export const attendanceService = {
   },
 
   /**
-   * Clock in (using Kenya timezone for date)
+   * Clock in (using Kenya timezone for date) - Enhanced with error codes
    */
   async clockIn(organizationId: string, staffId: string, locationId?: string, shiftId?: string): Promise<AttendanceRecord> {
+    // Get staff profile to check prerequisites
+    const profileDoc = await getDocument(docs.user(staffId));
+    if (!profileDoc) {
+      const error: any = new Error('Staff profile not found');
+      error.code = 'PROFILE_NOT_FOUND';
+      throw error;
+    }
+
+    const profile = profileDoc as Profile;
+
+    // CRITICAL: Check organizationId is set
+    if (!profile.organizationId) {
+      const error: any = new Error('Profile not linked to organization. Please contact admin to fix your account.');
+      error.code = 'MISSING_ORG_ID';
+      throw error;
+    }
+
+    // Verify organizationId matches
+    if (profile.organizationId !== organizationId) {
+      const error: any = new Error('Organization mismatch');
+      error.code = 'ORG_MISMATCH';
+      throw error;
+    }
+
+    // Check if staff is active
+    if (profile.staffStatus !== 'Active') {
+      const error: any = new Error('Your account is not active. Please contact admin.');
+      error.code = 'INACTIVE_STAFF';
+      throw error;
+    }
+
+    // Check professional license if exists
+    if (profile.license) {
+      if (profile.license.verificationStatus === 'Expired') {
+        const error: any = new Error('Your professional license has expired. Please update your credentials.');
+        error.code = 'LICENSE_EXPIRED';
+        throw error;
+      }
+      if (profile.license.verificationStatus === 'Rejected') {
+        const error: any = new Error('Your license verification was rejected. Please contact admin.');
+        error.code = 'LICENSE_REJECTED';
+        throw error;
+      }
+    }
+
     const now = new Date();
     const today = getTodayDateKE(); // Use Kenya timezone for date
     const clockInTime = now.toISOString();
@@ -152,7 +197,15 @@ export const attendanceService = {
     });
 
     if (existing.length > 0 && existing[0].clockIn && !existing[0].clockOut) {
-      throw new Error('Already clocked in. Please clock out first.');
+      const error: any = new Error('Already clocked in. Please clock out first.');
+      error.code = 'ALREADY_CLOCKED_IN';
+      throw error;
+    }
+
+    // Check for shift today if no shiftId provided
+    if (!shiftId) {
+      // TODO: Add check for scheduled shift
+      // For now, allow clock-in without shift (configurable by org)
     }
 
     const docRef = await addDoc(collections.attendance(organizationId), {

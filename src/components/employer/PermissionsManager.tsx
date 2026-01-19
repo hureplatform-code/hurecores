@@ -196,7 +196,16 @@ const PermissionsManager: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-600">{getPermissionCount(member)}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-blue-600 font-bold text-sm hover:underline">View Access</button>
+                                            <button
+                                                onClick={() => {
+                                                    const perms = member.permissions;
+                                                    const permList = perms ? Object.entries(perms).filter(([_, v]) => v).map(([k]) => k).join(', ') : 'No custom permissions';
+                                                    alert(`${member.fullName}\nRole: ${getRoleLabel(member.systemRole)}\nPermissions: ${permList}`);
+                                                }}
+                                                className="text-blue-600 font-bold text-sm hover:underline"
+                                            >
+                                                View Access
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

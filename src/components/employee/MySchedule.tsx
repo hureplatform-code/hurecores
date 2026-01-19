@@ -75,7 +75,7 @@ const MySchedule: React.FC = () => {
     if (loading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                <div className="animate-spin w-8 h-8 border-4 border-[#0f766e] border-t-transparent rounded-full"></div>
             </div>
         );
     }
@@ -96,7 +96,7 @@ const MySchedule: React.FC = () => {
                 {/* Quick Stats Cards */}
                 <div className="flex gap-4">
                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-                        <div className="bg-blue-50 w-10 h-10 rounded-xl flex items-center justify-center text-blue-600 font-bold">
+                        <div className="bg-[#ccfbf1] w-10 h-10 rounded-xl flex items-center justify-center text-[#0f766e] font-bold">
                             📅
                         </div>
                         <div>
@@ -123,10 +123,10 @@ const MySchedule: React.FC = () => {
 
                     <div className="space-y-4">
                         {myShifts.filter(s => !isPast(s.date)).length > 0 ? myShifts.filter(s => !isPast(s.date)).map((shift) => (
-                            <div key={shift.id} className={`bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isToday(shift.date) ? 'border-blue-500 ring-4 ring-blue-50' : 'border-slate-200'}`}>
+                            <div key={shift.id} className={`bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-all group ${isToday(shift.date) ? 'border-[#14b8a6] ring-4 ring-[#ccfbf1]' : 'border-slate-200'}`}>
                                 {isToday(shift.date) && (
-                                    <div className="mb-4 inline-flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                                        <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                                    <div className="mb-4 inline-flex items-center space-x-2 bg-[#ccfbf1] text-[#0f766e] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 bg-[#0f766e] rounded-full animate-pulse"></span>
                                         <span>Happening Today</span>
                                     </div>
                                 )}
@@ -192,12 +192,12 @@ const MySchedule: React.FC = () => {
                                             handleAcceptShift(shift.id);
                                         }}
                                         disabled={accepting === shift.id}
-                                        className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg disabled:opacity-50 whitespace-nowrap"
+                                        className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-[#ccfbf1] transition-colors shadow-lg disabled:opacity-50 whitespace-nowrap"
                                     >
                                         {accepting === shift.id ? '...' : 'Accept'}
                                     </button>
                                 </div>
-                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"></div>
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-teal-500/20 rounded-full blur-3xl"></div>
                                 <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"></div>
                             </div>
                         )) : (

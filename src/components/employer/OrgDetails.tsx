@@ -237,7 +237,7 @@ const OrgDetails: React.FC = () => {
             {/* Header with Status */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Organization Account</h2>
+                    <h2 className="text-2xl font-bold text-slate-900">Organization Details</h2>
                     <p className="text-slate-500 mt-1">{org?.name}</p>
                 </div>
                 <div className="flex items-center space-x-3">

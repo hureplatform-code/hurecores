@@ -13,3 +13,4 @@ export { billingService } from './billing.service';
 export { settingsService, policyDocumentsService } from './settings.service';
 export { auditService } from './audit.service';
 export { statutoryRulesService } from './statutoryRules.service';
+export { leaveEntitlementService } from './leave-entitlement.service';

@@ -198,6 +198,23 @@ export interface Profile {
   isSuperAdmin: boolean;
   // Permissions (only for ADMIN role)
   permissions?: StaffPermissions;
+  // Professional License (Healthcare-specific)
+  license?: {
+    number: string;
+    type: string; // e.g., "Medical License", "Nursing License"
+    authority: string; // e.g., "Medical Practitioners Board"
+    issuedDate?: string;
+    expiryDate: string;
+    verificationStatus: 'Pending' | 'Verified' | 'Expired' | 'Rejected';
+    documentUrl?: string;
+  };
+  // Practice Approval
+  practiceApproval?: {
+    organizationApproved: boolean;
+    locationApproved: boolean;
+    approvedAt?: string;
+    approvedBy?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -256,6 +273,30 @@ export interface LeaveBalance {
   leaveType?: LeaveType;
 }
 
+// Per-staff leave entitlement (individual allocations and balances)
+export interface LeaveEntitlement {
+  id: string;
+  organizationId: string;
+  staffId: string;
+  leaveTypeId: string;
+  year: number;
+  allocatedDays: number; // Can override LeaveType.daysAllowed
+  usedDays: number;
+  pendingDays: number; // Days in pending requests
+  carriedForwardDays: number; // From previous year
+  isActive: boolean; // Can disable specific types per staff
+  isOverridden: boolean; // True if allocatedDays differs from org default
+  overrideReason?: string; // Why allocation was overridden
+  overriddenBy?: string; // User ID who made the override
+  overriddenAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Joined fields
+  leaveType?: LeaveType;
+  staff?: Profile;
+}
+
+// Legacy - keeping for backward compatibility
 export interface StaffLeaveEntitlement {
   id: string;
   organizationId: string;
@@ -265,6 +306,7 @@ export interface StaffLeaveEntitlement {
     leaveTypeId: string;
     daysAllowed: number;
   }[];
+
   createdAt: string;
   updatedAt: string;
 }
@@ -786,6 +828,11 @@ export interface CreateStaffInput {
   payMethod?: PayMethod;
   hireDate?: string;
   permissions?: StaffPermissions;
+  // Professional License (Healthcare)
+  licenseType?: string;
+  licenseNumber?: string;
+  licenseAuthority?: string;
+  licenseExpiry?: string;
 }
 
 export interface CreateShiftInput {

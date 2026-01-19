@@ -159,6 +159,7 @@ export const leaveService = {
     startDate: string;
     endDate: string;
     reason?: string;
+    daysRequested?: number;
     allowOverBalance?: boolean; // Admin can override balance check
   }): Promise<{ success: boolean; error?: string; request?: LeaveRequest; balanceInfo?: { available: number; requested: number; isOverBalance: boolean } }> {
     // Validate dates
@@ -166,11 +167,14 @@ export const leaveService = {
       return { success: false, error: 'End date must be on or after start date' };
     }
 
-    // Calculate days requested
-    const start = new Date(input.startDate);
-    const end = new Date(input.endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const daysRequested = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    // Calculate days requested if not provided
+    let daysRequested = input.daysRequested;
+    if (!daysRequested) {
+      const start = new Date(input.startDate);
+      const end = new Date(input.endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      daysRequested = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
 
     // Get leave type to check if it's unlimited (999 days means unlimited)
     const leaveTypes = await this.getLeaveTypes(organizationId);
@@ -494,6 +498,7 @@ export const leaveService = {
     startDate: string;
     endDate: string;
     reason?: string;
+    daysRequested?: number;
   }): Promise<{ success: boolean; error?: string; request?: LeaveRequest }> {
     return this.createRequest(organizationId, input);
   }
