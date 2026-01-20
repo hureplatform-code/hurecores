@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { leaveService } from '../../lib/services';
+import { leaveService, leaveEntitlementService } from '../../lib/services';
 import type { LeaveRequest, LeaveEntitlement, LeaveStatus } from '../../types';
+import DateInput from '../common/DateInput';
+import { formatDateKE } from '../../lib/utils/dateFormat';
 
 const MyLeave: React.FC = () => {
     const { user } = useAuth();
@@ -59,7 +61,7 @@ const MyLeave: React.FC = () => {
                 const leaveTypes = await leaveService.getLeaveTypes(user.organizationId);
                 if (leaveTypes.length > 0) {
                     // Organization has policies, but staff has no balances. Initialize them.
-                    await leaveService.initializeStaffBalances(user.organizationId, user.id);
+                    await leaveEntitlementService.initializeStaffEntitlements(user.organizationId, user.id);
                     // Re-fetch
                     balances = await leaveService.getStaffBalances(user.organizationId, user.id);
                 }
@@ -236,23 +238,19 @@ const MyLeave: React.FC = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date *</label>
-                                <input
-                                    type="date"
-                                    value={formData.startDate}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
+                                <DateInput
+                                    label="Start Date"
                                     required
+                                    value={formData.startDate}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, startDate: value }))}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">End Date *</label>
-                                <input
-                                    type="date"
-                                    value={formData.endDate}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-[#0f766e]"
+                                <DateInput
+                                    label="End Date"
                                     required
+                                    value={formData.endDate}
+                                    onChange={(value) => setFormData(prev => ({ ...prev, endDate: value }))}
                                 />
                             </div>
                         </div>
@@ -322,7 +320,7 @@ const MyLeave: React.FC = () => {
                                                 {req.daysRequested || 0} days
                                             </td>
                                             <td className="px-6 py-4 text-slate-600 text-sm">
-                                                {new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}
+                                                {formatDateKE(req.startDate)} - {formatDateKE(req.endDate)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 {req.status === 'Pending' && (

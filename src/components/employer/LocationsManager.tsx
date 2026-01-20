@@ -3,8 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { organizationService } from '../../lib/services/organization.service';
 import KenyaPhoneInput from '../common/KenyaPhoneInput';
 import type { Location } from '../../types';
+import DateInput from '../common/DateInput';
 
-const LocationsManager: React.FC = () => {
+interface LocationsManagerProps {
+    onLocationUpdate?: () => void;
+}
+
+const LocationsManager: React.FC<LocationsManagerProps> = ({ onLocationUpdate }) => {
     const { user } = useAuth();
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
@@ -81,6 +86,10 @@ const LocationsManager: React.FC = () => {
             setNewLocation({ name: '', city: '', address: '', phone: '', isPrimary: false });
             setSuccess('Location added successfully');
             await loadLocations();
+            // Refresh parent dashboard logic
+            if (onLocationUpdate) {
+                onLocationUpdate();
+            }
         } catch (err: any) {
             console.error('Error adding location:', err);
             setError(err.message || 'Failed to add location');
@@ -108,6 +117,8 @@ const LocationsManager: React.FC = () => {
             setVerificationData({ licenseNumber: '', licensingBody: '', expiryDate: '' });
             setSuccess('Verification submitted successfully');
             await loadLocations();
+            // Refresh parent
+            if (onLocationUpdate) onLocationUpdate();
         } catch (err: any) {
             console.error('Error submitting verification:', err);
             setError(err.message || 'Failed to submit verification');
@@ -145,15 +156,24 @@ const LocationsManager: React.FC = () => {
                     <p className="text-slate-500">Manage your clinics and facilities.</p>
                 </div>
                 <div className="flex items-center space-x-4">
+
                     <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-sm font-bold">
                         {locations.length} / {maxLocations} Locations Used
                     </span>
-                    {locations.length < maxLocations && (
+                    {locations.length < maxLocations ? (
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="bg-[#1a2e35] text-[#4fd1c5] px-5 py-2.5 rounded-xl font-bold hover:bg-[#152428] transition-colors shadow-lg shadow-[#1a2e35]/20"
                         >
                             + Add Location
+                        </button>
+                    ) : (
+                        <button
+                            disabled
+                            className="bg-slate-100 text-slate-400 px-5 py-2.5 rounded-xl font-bold cursor-not-allowed border border-slate-200"
+                            title={`Plan limit of ${maxLocations} locations reached. Upgrade to add more.`}
+                        >
+                            Limit Reached
                         </button>
                     )}
                 </div>
@@ -292,9 +312,11 @@ const LocationsManager: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-600 mb-1">Expiry Date *</label>
-                                                    <input type="date" className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
-                                                        value={verificationData.expiryDate} onChange={e => setVerificationData({ ...verificationData, expiryDate: e.target.value })}
+                                                    <DateInput
+                                                        label="Expiry Date"
+                                                        required
+                                                        value={verificationData.expiryDate}
+                                                        onChange={(value) => setVerificationData({ ...verificationData, expiryDate: value })}
                                                     />
                                                 </div>
 

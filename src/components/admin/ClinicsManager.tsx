@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../lib/services/organization.service';
+import { adminService } from '../../lib/services';
 import type { Organization } from '../../types';
 
 const ClinicsManager: React.FC = () => {
@@ -111,17 +111,17 @@ const ClinicsManager: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${clinic.verificationStatus === 'Verified' ? 'bg-green-100 text-green-700' :
-                                                clinic.verificationStatus === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                            clinic.verificationStatus === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                                             }`}>
                                             {clinic.verificationStatus || 'Unverified'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`flex items-center gap-1.5 text-sm font-bold ${clinic.accountStatus === 'Active' ? 'text-green-600' :
-                                                clinic.accountStatus === 'Pending' ? 'text-blue-600' : 'text-slate-400'
+                                            clinic.accountStatus === 'Pending' ? 'text-blue-600' : 'text-slate-400'
                                             }`}>
                                             <span className={`w-2 h-2 rounded-full ${clinic.accountStatus === 'Active' ? 'bg-green-600' :
-                                                    clinic.accountStatus === 'Pending' ? 'bg-blue-600' : 'bg-slate-400'
+                                                clinic.accountStatus === 'Pending' ? 'bg-blue-600' : 'bg-slate-400'
                                                 }`}></span>
                                             {clinic.accountStatus || 'Pending'}
                                         </span>

@@ -23,6 +23,7 @@ import { staffService } from './staff.service';
 import { attendanceService } from './attendance.service';
 import { leaveService } from './leave.service';
 import { auditService } from './audit.service';
+import { statutoryService } from './statutory.service';
 
 // =====================================================
 // PAYROLL SERVICE
@@ -141,8 +142,18 @@ export const payrollService = {
           break;
       }
 
-      const grossPayCents = payableBaseCents;
-      const netPayCents = grossPayCents; // Before deductions
+      const grossPayCents = payableBaseCents; // + Allowances (handled separately usually, but for now base)
+
+      // --- STATUTORY DEDUCTIONS ---
+      const rules = await statutoryService.getGlobalRules();
+      const calculation = statutoryService.calculateNetPay(
+        grossPayCents / 100, // Convert to KES
+        0, // Allowances (currently 0 at generation)
+        rules
+      );
+
+      const netPayCents = Math.round(calculation.netPay * 100);
+      const deductionsTotalCents = Math.round(calculation.deductions.total * 100);
 
       const entryRef = await addDoc(collections.payrollEntries(organizationId), {
         payrollPeriodId: periodId,
@@ -156,7 +167,8 @@ export const payrollService = {
         absentUnits,
         payableBaseCents,
         allowancesTotalCents: 0,
-        deductionsTotalCents: 0,
+        deductionsTotalCents,
+        deductionDetails: calculation.deductions, // Store breakdown
         grossPayCents,
         netPayCents,
         isPaid: false,

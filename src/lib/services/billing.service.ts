@@ -26,11 +26,19 @@ import type {
     BillingLog,
     SubscriptionPlan,
     BillingSubscriptionState,
-    PaymentMode,
+    PaymentMode
+} from '../../types';
+import { formatDateKE } from '../utils/dateFormat';
+import type {
     PaymentProvider,
     PaymentStatus,
     BillingEventType
 } from '../../types';
+
+// Constants for plan IDs - must match database
+export const PLAN_IDS = {
+    // Add plan IDs here if needed
+};
 
 // =====================================================
 // COLLECTION REFERENCES
@@ -112,7 +120,7 @@ export const billingService = {
         // Log trial start
         await this.logBillingEvent(organizationId, 'TRIAL_START', {
             plan,
-            description: `Trial started for ${plan} plan. Ends on ${trialEnd.toLocaleDateString()}`,
+            description: `Trial started for ${plan} plan. Ends on ${formatDateKE(trialEnd)}`,
             newState: 'TRIAL',
         });
 
@@ -494,7 +502,7 @@ export const billingService = {
             provider,
             previousState: subscription.billingState,
             newState: 'ACTIVE',
-            description: `Payment received via ${provider}. Next billing: ${nextBilling.toLocaleDateString()}`,
+            description: `Payment received via ${provider}. Next billing: ${formatDateKE(nextBilling)}`,
         });
     },
 
@@ -716,7 +724,7 @@ export const billingService = {
 
             return {
                 success: true,
-                message: `[DEV] Reset to trial. Expires on ${trialEnd.toLocaleDateString()}.`,
+                message: `[DEV] Reset to trial. Expires on ${formatDateKE(trialEnd)}.`,
             };
         } catch (error) {
             console.error('[DEV] Error resetting to trial:', error);

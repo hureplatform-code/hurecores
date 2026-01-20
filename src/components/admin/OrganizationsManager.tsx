@@ -152,8 +152,7 @@ const OrganizationsManager: React.FC = () => {
         try {
             // Load Facilities
             const locsQuery = query(
-                collection(db, 'locations'),
-                where('organizationId', '==', org.id)
+                collection(db, 'organizations', org.id, 'locations')
             );
             const locsSnap = await getDocs(locsQuery);
             const facilitiesData: Facility[] = [];
@@ -321,7 +320,7 @@ const OrganizationsManager: React.FC = () => {
                 });
             }
 
-            await updateDoc(doc(db, 'locations', facility.id), {
+            await updateDoc(doc(db, 'organizations', facility.organizationId, 'locations', facility.id), {
                 verificationStatus: 'Suspended',
                 isActive: false
             });
@@ -361,7 +360,7 @@ const OrganizationsManager: React.FC = () => {
                 });
             }
 
-            await updateDoc(doc(db, 'locations', facility.id), {
+            await updateDoc(doc(db, 'organizations', facility.organizationId, 'locations', facility.id), {
                 verificationStatus: 'Active',
                 isActive: true
             });

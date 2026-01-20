@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { organizationService, storageService } from '../../lib/services';
 import type { Organization, Location, VerificationStatus, SubscriptionStatus } from '../../types';
 import { formatDateKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
 
 const OrgDetails: React.FC = () => {
     const { user } = useAuth();
@@ -556,13 +557,11 @@ const OrgDetails: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Expiry Date *</label>
-                                <input
-                                    type="date"
+                                <DateInput
+                                    label="Expiry Date"
                                     required
                                     value={facilityForm.expiryDate}
-                                    onChange={(e) => setFacilityForm(prev => ({ ...prev, expiryDate: e.target.value }))}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                                    onChange={(value) => setFacilityForm(prev => ({ ...prev, expiryDate: value }))}
                                 />
                             </div>
 

@@ -16,6 +16,7 @@ import {
 } from '../firestore';
 import type {
     Organization,
+    Location,
     VerificationRequest,
     VerificationStatus,
     AuditLogEntry,
@@ -100,11 +101,31 @@ export const adminService = {
         );
 
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
-        })) as VerificationRequest[];
+        const requests = await Promise.all(
+            snapshot.docs.map(async doc => {
+                const data = doc.data() as VerificationRequest;
+                const request: VerificationRequest = {
+                    id: doc.id,
+                    ...data,
+                    createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+                };
+
+                // Fetch related organization
+                if (data.organizationId) {
+                    const org = await getDocument<Organization>(docs.organization(data.organizationId));
+                    if (org) request.organization = org;
+                }
+
+                // Fetch related location
+                if (data.locationId && data.organizationId) {
+                    const loc = await getDocument<Location>(docs.location(data.organizationId, data.locationId));
+                    if (loc) request.location = loc;
+                }
+
+                return request;
+            })
+        );
+        return requests;
     },
 
     /**
@@ -117,11 +138,31 @@ export const adminService = {
         );
 
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
-        })) as VerificationRequest[];
+        const requests = await Promise.all(
+            snapshot.docs.map(async doc => {
+                const data = doc.data() as VerificationRequest;
+                const request: VerificationRequest = {
+                    id: doc.id,
+                    ...data,
+                    createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+                };
+
+                // Fetch related organization
+                if (data.organizationId) {
+                    const org = await getDocument<Organization>(docs.organization(data.organizationId));
+                    if (org) request.organization = org;
+                }
+
+                // Fetch related location
+                if (data.locationId && data.organizationId) {
+                    const loc = await getDocument<Location>(docs.location(data.organizationId, data.locationId));
+                    if (loc) request.location = loc;
+                }
+
+                return request;
+            })
+        );
+        return requests;
     },
 
     /**
@@ -228,18 +269,38 @@ export const adminService = {
     /**
      * Get all organizations
      */
-    async getAllOrganizations(): Promise<Organization[]> {
-        const snapshot = await getDocs(collections.organizations());
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Organization[];
+    async getAllOrganizations(filters?: {
+        status?: string;
+        plan?: string;
+        search?: string;
+    }): Promise<Organization[]> {
+        let q = query(collections.organizations(), orderBy('createdAt', 'desc'));
+
+        const snapshot = await getDocs(q);
+        let results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Organization));
+
+        // Apply filters in memory
+        if (filters?.status) {
+            results = results.filter(org => org.accountStatus === filters.status || org.orgStatus === filters.status);
+        }
+        if (filters?.plan) {
+            results = results.filter(org => org.plan === filters.plan);
+        }
+        if (filters?.search) {
+            const search = filters.search.toLowerCase();
+            results = results.filter(org =>
+                org.name.toLowerCase().includes(search) ||
+                org.email.toLowerCase().includes(search)
+            );
+        }
+
+        return results;
     },
 
     /**
-     * Update organization status
+     * Update organization account status
      */
-    async updateOrganizationStatus(organizationId: string, status: 'Active' | 'Suspended' | 'Inactive') {
+    async updateAccountStatus(organizationId: string, status: 'Active' | 'Suspended' | 'Inactive') {
         await updateDoc(docs.organization(organizationId), {
             accountStatus: status,
             updatedAt: serverTimestamp()
@@ -252,5 +313,12 @@ export const adminService = {
             undefined,
             organizationId
         );
+    },
+
+    /**
+     * Alias for updateAccountStatus for backward compatibility
+     */
+    async updateOrganizationStatus(organizationId: string, status: 'Active' | 'Suspended' | 'Inactive') {
+        return this.updateAccountStatus(organizationId, status);
     }
 };

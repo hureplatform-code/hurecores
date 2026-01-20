@@ -31,18 +31,21 @@ const VerificationsManager: React.FC = () => {
     };
 
     const handleApprove = async (request: VerificationRequest) => {
-        if (!confirm(`Are you sure you want to approve this verification for ${request.organizationName}?`)) return;
+        const orgName = request.organization?.name || 'Organization';
+        if (!confirm(`Are you sure you want to approve this verification for ${orgName}?`)) return;
 
         setProcessing(true);
         try {
             const result = await adminService.approveVerification(request.id);
             if (result.success) {
                 // Send notification email
-                if (request.contactEmail) {
+                if (request.organization?.email) {
                     await emailService.sendVerificationNotification(
-                        request.contactEmail,
-                        request.organizationName || 'Organization',
-                        'Verified'
+                        request.organization.email,
+                        request.organization.name || 'Admin',
+                        'Verified',
+                        request.type === 'ORG' ? 'Organization' : 'Facility',
+                        request.type === 'FACILITY' ? (request.location?.name || 'Facility') : (request.organization?.name || 'Organization')
                     );
                 }
                 loadData();
@@ -74,11 +77,13 @@ const VerificationsManager: React.FC = () => {
             const result = await adminService.rejectVerification(selectedRequest.id, rejectionReason);
             if (result.success) {
                 // Send notification email
-                if (selectedRequest.contactEmail) {
+                if (selectedRequest.organization?.email) {
                     await emailService.sendVerificationNotification(
-                        selectedRequest.contactEmail,
-                        selectedRequest.organizationName || 'Organization',
+                        selectedRequest.organization.email,
+                        selectedRequest.organization.name || 'Admin',
                         'Rejected',
+                        selectedRequest.type === 'ORG' ? 'Organization' : 'Facility',
+                        selectedRequest.type === 'FACILITY' ? (selectedRequest.location?.name || 'Facility') : (selectedRequest.organization?.name || 'Organization'),
                         rejectionReason
                     );
                 }
@@ -157,7 +162,7 @@ const VerificationsManager: React.FC = () => {
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="text-lg font-bold text-slate-900">{item.organizationName}</h3>
+                                        <h3 className="text-lg font-bold text-slate-900">{item.organization?.name || 'Organization'}</h3>
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.type === 'ORG' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
                                             {item.type === 'ORG' ? 'Organization' : 'Facility'}
                                         </span>
@@ -232,7 +237,7 @@ const VerificationsManager: React.FC = () => {
                         <h2 className="text-xl font-bold text-slate-900 mb-4">Reject Verification</h2>
 
                         <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                            <p className="font-medium text-slate-900">{selectedRequest.organizationName}</p>
+                            <p className="font-medium text-slate-900">{selectedRequest.organization?.name || 'Organization'}</p>
                             <p className="text-sm text-slate-500">{selectedRequest.type === 'ORG' ? 'Organization' : 'Facility'} Verification</p>
                         </div>
 

@@ -160,7 +160,7 @@ const DashboardHome: React.FC = () => {
                     <div className="text-3xl font-bold text-[#0F172A] mb-1">{stats?.totalStaff || 0}</div>
                     <div className="text-sm font-semibold text-[#475569]">Total Staff</div>
                     <div className="text-xs text-[#94A3B8] mt-1">of {stats?.maxStaff || 0} allowed</div>
-                    <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 inline-block px-2 py-0.5 rounded border border-amber-100">
+                    <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 inline-block px-2 py-0.5 rounded border border-amber-100" title="Admin seats consume 1 staff license each">
                         {stats?.adminSeatsUsed || 0} / {stats?.maxAdmins || 0} Admin Roles Used
                     </div>
                     <div className="text-xs font-semibold text-[#2FB7A3] mt-3 opacity-0 group-hover:opacity-100 transition-opacity">View Staff →</div>

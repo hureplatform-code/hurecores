@@ -5,6 +5,7 @@ import type { Shift, ShiftAssignment, Profile, Location } from '../../types';
 import { JOB_TITLES } from '../../types';
 import KenyaPhoneInput from '../common/KenyaPhoneInput';
 import { formatDateKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
 
 interface LocumForm {
     name: string;
@@ -400,11 +401,9 @@ const ScheduleManager: React.FC = () => {
             <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-4 items-end">
                 <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Week Of</label>
-                    <input
-                        type="date"
+                    <DateInput
                         value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#4fd1c5] outline-none"
+                        onChange={(value) => setSelectedDate(value)}
                     />
                 </div>
                 <div>
@@ -575,13 +574,11 @@ const ScheduleManager: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Date *</label>
-                                <input
-                                    type="date"
+                                <DateInput
+                                    label="Date"
                                     required
                                     value={newShift.date}
-                                    onChange={(e) => setNewShift(prev => ({ ...prev, date: e.target.value }))}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                                    onChange={(value) => setNewShift(prev => ({ ...prev, date: value }))}
                                 />
                             </div>
 
@@ -680,13 +677,11 @@ const ScheduleManager: React.FC = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-2">Repeat until</label>
-                                            <input
-                                                type="date"
+                                            <DateInput
+                                                label="Repeat until"
                                                 value={repeatEndDate}
-                                                onChange={(e) => setRepeatEndDate(e.target.value)}
+                                                onChange={(value) => setRepeatEndDate(value)}
                                                 min={newShift.date}
-                                                className="w-full px-4 py-3 border border-slate-300 rounded-xl"
                                             />
                                         </div>
                                         {repeatDays.length > 0 && repeatEndDate && (
@@ -738,13 +733,11 @@ const ScheduleManager: React.FC = () => {
 
                         <form onSubmit={handleUpdateShift} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Date *</label>
-                                <input
-                                    type="date"
+                                <DateInput
+                                    label="Date"
                                     required
                                     value={editShift.date}
-                                    onChange={(e) => setEditShift(prev => ({ ...prev, date: e.target.value }))}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                                    onChange={(value) => setEditShift(prev => ({ ...prev, date: value }))}
                                 />
                             </div>
 

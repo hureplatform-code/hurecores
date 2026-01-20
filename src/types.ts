@@ -471,6 +471,13 @@ export interface PayrollEntry {
   payableBaseCents: number;
   allowancesTotalCents: number;
   deductionsTotalCents: number;
+  deductionDetails?: {
+    nssf: number;
+    paye: number;
+    shif: number;
+    housingLevy: number;
+    total: number;
+  };
   grossPayCents: number;
   netPayCents: number;
   isPaid: boolean;
@@ -838,6 +845,7 @@ export interface CreateStaffInput {
   licenseNumber?: string;
   licenseAuthority?: string;
   licenseExpiry?: string;
+  licenseDocumentUrl?: string;
 }
 
 export interface CreateShiftInput {

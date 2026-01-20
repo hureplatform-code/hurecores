@@ -1,7 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import fetch from "node-fetch";
-const cors = require('cors')({ origin: true });
+const fetch = require("node-fetch");
 
 admin.initializeApp();
 
@@ -23,7 +22,7 @@ interface SendEmailParams {
     senderEmail?: string;
 }
 
-export const sendEmail = functions.https.onCall(async (data: SendEmailParams, context) => {
+export const sendEmail = functions.https.onCall(async (data: SendEmailParams, context: functions.https.CallableContext) => {
     // Basic Auth Check
     // if (!context.auth) {
     //     throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
@@ -79,7 +78,7 @@ export const sendEmail = functions.https.onCall(async (data: SendEmailParams, co
 });
 
 // Simple OTP Generation and Sending
-export const sendOTP = functions.https.onCall(async (data: { email: string; firstName?: string }, context) => {
+export const sendOTP = functions.https.onCall(async (data: { email: string; firstName?: string }, context: functions.https.CallableContext) => {
     const { email, firstName } = data;
     if (!email) {
         throw new functions.https.HttpsError('invalid-argument', 'Email is required.');
@@ -125,7 +124,7 @@ export const sendOTP = functions.https.onCall(async (data: { email: string; firs
     }
 });
 
-export const verifyOTP = functions.https.onCall(async (data: { email: string; otp: string }, context) => {
+export const verifyOTP = functions.https.onCall(async (data: { email: string; otp: string }, context: functions.https.CallableContext) => {
     const { email, otp } = data;
     if (!email || !otp) {
         throw new functions.https.HttpsError('invalid-argument', 'Email and OTP required.');

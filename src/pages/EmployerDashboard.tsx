@@ -110,7 +110,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             } />
             <Route path="/staff" element={
               <SubscriptionGuard>
-                <StaffManagement />
+                <StaffManagement selectedLocationId={selectedLocationId} />
               </SubscriptionGuard>
             } />
             <Route path="/schedule" element={
@@ -150,7 +150,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             } />
             <Route path="/locations" element={
               <SubscriptionGuard>
-                <LocationsManager />
+                <LocationsManager onLocationUpdate={loadOrganizationData} />
               </SubscriptionGuard>
             } />
             <Route path="/permissions" element={

@@ -4,6 +4,7 @@ import { attendanceService, organizationService, scheduleService } from '../../l
 import type { AttendanceRecord, AttendanceStatus, Location, Shift } from '../../types';
 import { JOB_TITLES } from '../../types';
 import { formatDateKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
 
 // Roles for locum selection
 const LOCUM_ROLES = JOB_TITLES.filter(role =>
@@ -317,20 +318,18 @@ const AttendanceView: React.FC = () => {
             <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-4 items-end">
                 <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date</label>
-                    <input
-                        type="date"
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date</label>
+                    <DateInput
                         value={dateRange.start}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                        className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#4fd1c5]"
+                        onChange={(value) => setDateRange(prev => ({ ...prev, start: value }))}
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">End Date</label>
-                    <input
-                        type="date"
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">End Date</label>
+                    <DateInput
                         value={dateRange.end}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                        className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#4fd1c5]"
+                        onChange={(value) => setDateRange(prev => ({ ...prev, end: value }))}
                     />
                 </div>
                 <div>
@@ -588,13 +587,11 @@ const ManualEntryModal: React.FC<{
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">Date *</label>
-                        <input
-                            type="date"
+                        <DateInput
+                            label="Date"
                             required
                             value={formData.date}
-                            onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                            onChange={(value) => setFormData(prev => ({ ...prev, date: value }))}
                         />
                     </div>
 

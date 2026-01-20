@@ -320,9 +320,9 @@ export const scheduleService = {
       assignmentId: docRef.id,
       staffId: input.staffId,
       description: input.isLocum
-        ? `Assigned locum "${input.locumName}" to shift on ${shift.date}`
+        ? `Assigned locum "${input.locumName || 'Unknown'}" to shift on ${shift.date}`
         : `Assigned staff to shift on ${shift.date}`,
-      metadata: { isLocum: input.isLocum, locumName: input.locumName, shiftDate: shift.date }
+      metadata: { isLocum: input.isLocum || false, locumName: input.locumName || null, shiftDate: shift.date }
     });
 
     const assignments = await this.getShiftAssignments(organizationId, shiftId);

@@ -78,6 +78,8 @@ export const docs = {
     settings: (orgId: string, settingsId: string) => doc(db, 'organizations', orgId, 'settings', settingsId),
     policyDocument: (orgId: string, docId: string) => doc(db, 'organizations', orgId, 'policyDocuments', docId),
     documentAcknowledgement: (orgId: string, ackId: string) => doc(db, 'organizations', orgId, 'documentAcknowledgements', ackId),
+    leaveType: (orgId: string, typeId: string) => doc(db, 'organizations', orgId, 'leaveTypes', typeId),
+    customRole: (orgId: string, roleId: string) => doc(db, 'organizations', orgId, 'customRoles', roleId),
 };
 
 // =====================================================

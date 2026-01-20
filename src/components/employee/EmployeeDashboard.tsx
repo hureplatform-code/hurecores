@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, scheduleService, settingsService, policyDocumentsService, organizationService } from '../../lib/services';
+import { getTodayDateKE, formatDateFullKE, formatTimeKE, getMondayOfWeekKE } from '../../lib/utils/dateFormat';
 import type { AttendanceRecord, Shift, OrganizationSettings, PolicyDocument, Organization, Location } from '../../types';
 
 const EmployeeDashboard: React.FC = () => {
@@ -27,7 +28,8 @@ const EmployeeDashboard: React.FC = () => {
         if (!user?.organizationId || !user?.id) return;
         setLoading(true);
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Use Kenya timezone for accurate "today" calculation
+            const today = getTodayDateKE();
             const endOfWeek = new Date();
             endOfWeek.setDate(endOfWeek.getDate() + 7);
 
@@ -83,7 +85,11 @@ const EmployeeDashboard: React.FC = () => {
     };
 
     const isOnline = todayRecord && todayRecord.clockIn && !todayRecord.clockOut;
-    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+    // Use enhanced date formatter
+    const todayStr = typeof formatDateFullKE === 'function'
+        ? formatDateFullKE(new Date())
+        : new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     // Teal theme colors
     const themeColor = {
@@ -92,6 +98,17 @@ const EmployeeDashboard: React.FC = () => {
         text: 'text-[#0f766e]',
         border: 'border-[#14b8a6]'
     };
+
+    // Week View Helpers
+    const currentWeekMonday = getMondayOfWeekKE();
+    const getDateForWeekDay = (dayIndex: number) => {
+        const date = new Date(currentWeekMonday);
+        date.setDate(currentWeekMonday.getDate() + dayIndex);
+        return date;
+    };
+    const getDayAbbrev = (dayIndex: number) => getDateForWeekDay(dayIndex).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3);
+    const getDayNum = (dayIndex: number) => getDateForWeekDay(dayIndex).getDate();
+    const isDayToday = (dayIndex: number) => getDateForWeekDay(dayIndex).toISOString().split('T')[0] === getTodayDateKE();
 
     if (loading) {
         return (
@@ -134,14 +151,7 @@ const EmployeeDashboard: React.FC = () => {
                                                 <span className="text-xs font-mono text-slate-500">{todayShift.id.slice(0, 6)}</span>
                                             </div>
                                             <div className="text-2xl font-bold text-slate-900 mb-1">
-                                                {(() => {
-                                                    const formatTime = (dateStr: string) => {
-                                                        if (!dateStr) return '--:--';
-                                                        const d = new Date(dateStr);
-                                                        return isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                                    };
-                                                    return `${formatTime(todayShift.startTime)} - ${formatTime(todayShift.endTime)}`;
-                                                })()}
+                                                {formatTimeKE(todayShift.startTime)} - {formatTimeKE(todayShift.endTime)}
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-slate-500">
                                                 <span>🩺 {user?.jobTitle || 'Staff'}</span>
@@ -216,32 +226,58 @@ const EmployeeDashboard: React.FC = () => {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                    {/* Upcoming Shifts Mini-List */}
+                    {/* Mini Calendar / Week View */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-900">Upcoming Shifts</h3>
-                            <button onClick={() => navigate('/employee/schedule')} className="text-xs font-bold text-[#0f766e] hover:underline">View All</button>
+                            <button
+                                onClick={() => navigate('/employee/schedule')}
+                                className="text-sm font-medium text-[#0f766e] hover:text-teal-700 transition-colors"
+                            >
+                                View This Week
+                            </button>
+                            <span className="text-sm text-slate-400">All locations</span>
                         </div>
+
+                        {/* Week Days - Monday (0) to Sunday (6) */}
+                        <div className="grid grid-cols-7 gap-1 mb-4">
+                            {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+                                const isToday = isDayToday(dayIndex);
+                                return (
+                                    <div
+                                        key={dayIndex}
+                                        className={`text-center py-2 rounded-lg ${isToday ? 'bg-[#0f766e] text-white' : 'text-slate-600'}`}
+                                    >
+                                        <div className="text-xs font-medium">{getDayAbbrev(dayIndex)}</div>
+                                        <div className={`text-lg font-bold ${isToday ? 'text-white' : 'text-slate-900'}`}>{getDayNum(dayIndex)}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <h4 className="font-bold text-slate-900 mb-3">My Scheduled Shifts</h4>
 
                         {upcomingShifts.length > 0 ? (
                             <div className="space-y-3">
                                 {upcomingShifts.map(shift => (
-                                    <div key={shift.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors">
-                                        <div className="flex-shrink-0 w-10 text-center bg-slate-100 rounded-lg py-1">
+                                    <div key={shift.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors bg-slate-50">
+                                        <div className="flex-shrink-0 w-10 text-center bg-white border border-slate-100 rounded-lg py-1 shadow-sm">
                                             <div className="text-[10px] font-bold text-slate-500 uppercase">{new Date(shift.date).toLocaleDateString('en-US', { weekday: 'short' })}</div>
                                             <div className="text-sm font-bold text-slate-900">{new Date(shift.date).getDate()}</div>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-bold text-slate-900 truncate">
-                                                {new Date(shift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(shift.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatTimeKE(shift.startTime)} - {formatTimeKE(shift.endTime)}
                                             </div>
                                             <div className="text-xs text-slate-500 truncate">{shift.shiftType || 'Shift'}</div>
                                         </div>
+                                        <div className={`w-2 h-2 rounded-full ${shift.status === 'Published' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-slate-500 text-center py-4">No upcoming shifts this week.</p>
+                            <p className="text-sm text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                No upcoming shifts this week.
+                            </p>
                         )}
                     </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../lib/services/organization.service';
+import { adminService } from '../../lib/services';
 import type { Organization } from '../../types';
 import { PLANS } from '../../constants';
 
@@ -107,10 +107,10 @@ const AdminTransactions: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`flex items-center gap-1.5 text-xs font-bold uppercase ${txn.status === 'Completed' ? 'text-green-600' :
-                                                txn.status === 'Pending' ? 'text-amber-600' : 'text-red-500'
+                                            txn.status === 'Pending' ? 'text-amber-600' : 'text-red-500'
                                             }`}>
                                             <span className={`w-1.5 h-1.5 rounded-full ${txn.status === 'Completed' ? 'bg-green-600' :
-                                                    txn.status === 'Pending' ? 'bg-amber-600' : 'bg-red-500'
+                                                txn.status === 'Pending' ? 'bg-amber-600' : 'bg-red-500'
                                                 }`}></span>
                                             {txn.status}
                                         </span>

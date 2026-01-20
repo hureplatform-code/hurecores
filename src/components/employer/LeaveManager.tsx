@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { leaveService, staffService, organizationService, scheduleService } from '../../lib/services';
 import type { LeaveRequest, LeaveType, LeaveStatus, Profile, Location } from '../../types';
 import { JOB_TITLES } from '../../types';
+import DateInput from '../common/DateInput';
+import { formatDateKE } from '../../lib/utils/dateFormat';
 
 // Kenya Default Leave Types
 const KENYA_DEFAULT_LEAVES = [
@@ -241,24 +243,12 @@ const LeaveManager: React.FC = () => {
             </div>
 
             {/* Navigation Helper - Only show in requests tab */}
-            {activeTab === 'requests' && (
+            {/* Navigation Helper - Removed per request */}
+            {/* {activeTab === 'requests' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                    <div className="flex items-start space-x-3">
-                        <span className="text-xl">ℹ️</span>
-                        <div className="flex-1">
-                            <p className="text-sm text-blue-800">
-                                <strong>Need to configure leave types?</strong> View and manage organization-wide leave policies in the{' '}
-                                <button
-                                    onClick={() => setActiveTab('policies')}
-                                    className="underline font-semibold hover:text-blue-900"
-                                >
-                                    Leave Policies tab →
-                                </button>
-                            </p>
-                        </div>
-                    </div>
+                    ...
                 </div>
-            )}
+            )} */}
 
             {activeTab === 'requests' && (
                 <>
@@ -266,12 +256,18 @@ const LeaveManager: React.FC = () => {
                     <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">From Date</label>
-                                <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({ ...p, startDate: e.target.value }))} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                                <DateInput
+                                    label="From Date"
+                                    value={filters.startDate}
+                                    onChange={(value) => setFilters(p => ({ ...p, startDate: value }))}
+                                />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">To Date</label>
-                                <input type="date" value={filters.endDate} onChange={e => setFilters(p => ({ ...p, endDate: e.target.value }))} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                                <DateInput
+                                    label="To Date"
+                                    value={filters.endDate}
+                                    onChange={(value) => setFilters(p => ({ ...p, endDate: value }))}
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">Location</label>
@@ -330,7 +326,7 @@ const LeaveManager: React.FC = () => {
                                                 {req.leaveType?.name || 'Unknown'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-600 text-sm">{req.startDate} → {req.endDate}</td>
+                                        <td className="px-6 py-4 text-slate-600 text-sm">{formatDateKE(req.startDate)} → {formatDateKE(req.endDate)}</td>
                                         <td className="px-6 py-4 text-center font-medium">{req.daysRequested}</td>
                                         <td className="px-6 py-4 text-center">{getStatusBadge(req.status)}</td>
                                         <td className="px-6 py-4">{getPayrollImpact(req)}</td>
@@ -389,12 +385,20 @@ const LeaveManager: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date *</label>
-                                    <input type="date" required value={newRequest.startDate} onChange={e => setNewRequest(p => ({ ...p, startDate: e.target.value }))} className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
+                                    <DateInput
+                                        label="Start Date"
+                                        required
+                                        value={newRequest.startDate}
+                                        onChange={(value) => setNewRequest(p => ({ ...p, startDate: value }))}
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">End Date *</label>
-                                    <input type="date" required value={newRequest.endDate} onChange={e => setNewRequest(p => ({ ...p, endDate: e.target.value }))} className="w-full px-4 py-3 border border-slate-300 rounded-xl" />
+                                    <DateInput
+                                        label="End Date"
+                                        required
+                                        value={newRequest.endDate}
+                                        onChange={(value) => setNewRequest(p => ({ ...p, endDate: value }))}
+                                    />
                                 </div>
                             </div>
                             <div>
@@ -437,27 +441,46 @@ const LeaveManager: React.FC = () => {
     );
 };
 
-// Leave Policies Tab Component
+// Leave Policies Tab Component - Fully Editable
 const LeavePoliciesTab: React.FC<{ leaveTypes: LeaveType[]; onRefresh: () => void }> = ({ leaveTypes, onRefresh }) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editingType, setEditingType] = useState<LeaveType | null>(null);
+    const [formData, setFormData] = useState<Partial<LeaveType>>({
+        name: '',
+        daysAllowed: 21,
+        isPaid: true,
+        requiresApproval: true,
+        requiresDocument: false,
+        carryForwardAllowed: false,
+        notes: ''
+    });
+
+    // Reset form when modal opens/closes
+    useEffect(() => {
+        if (!showModal) {
+            setEditingType(null);
+            setFormData({
+                name: '',
+                daysAllowed: 21,
+                isPaid: true,
+                requiresApproval: true,
+                requiresDocument: false,
+                carryForwardAllowed: false,
+                notes: ''
+            });
+        } else if (editingType) {
+            setFormData({ ...editingType });
+        }
+    }, [showModal, editingType]);
 
     const handleInitializeDefaults = async () => {
         if (!user?.organizationId) return;
 
         const confirmed = window.confirm(
             '📋 Initialize Default Leave Types\n\n' +
-            'This will create 9 Kenya-standard leave types:\n' +
-            '• Annual Leave (21 days)\n' +
-            '• Sick Leave - Paid (14 days)\n' +
-            '• Sick Leave - Unpaid (Unlimited)\n' +
-            '• Maternity Leave (90 days)\n' +
-            '• Paternity Leave (14 days)\n' +
-            '• Compassionate Leave (5 days)\n' +
-            '• Study Leave (10 days)\n' +
-            '• Unpaid Leave (Unlimited)\n' +
-            '• Comp Off (10 days)\n\n' +
-            'Continue?'
+            'This will create 9 Kenya-standard leave types. Continue?'
         );
 
         if (!confirmed) return;
@@ -465,11 +488,45 @@ const LeavePoliciesTab: React.FC<{ leaveTypes: LeaveType[]; onRefresh: () => voi
         setLoading(true);
         try {
             await leaveService.createDefaultLeaveTypes(user.organizationId);
-            alert('✅ Default leave types created successfully!');
             onRefresh();
         } catch (error) {
             console.error('Error creating default leave types:', error);
-            alert('❌ Error creating leave types. Please try again.');
+            alert('❌ Error creating leave types.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (typeId: string) => {
+        if (!user?.organizationId || !confirm('Are you sure you want to delete this leave policy? This cannot be undone.')) return;
+
+        try {
+            await leaveService.deleteLeaveType(user.organizationId, typeId);
+            onRefresh();
+        } catch (error) {
+            console.error('Error deleting leave type:', error);
+            alert('Failed to delete leave type.');
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user?.organizationId) return;
+
+        setLoading(true);
+        try {
+            if (editingType) {
+                // Update
+                await leaveService.updateLeaveType(user.organizationId, editingType.id, formData);
+            } else {
+                // Create
+                await leaveService.createLeaveType(user.organizationId, formData as any);
+            }
+            setShowModal(false);
+            onRefresh();
+        } catch (error) {
+            console.error('Error saving leave type:', error);
+            alert('Failed to save leave type.');
         } finally {
             setLoading(false);
         }
@@ -477,58 +534,195 @@ const LeavePoliciesTab: React.FC<{ leaveTypes: LeaveType[]; onRefresh: () => voi
 
     return (
         <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm text-blue-700">
-                    <strong>Organization Leave Policies:</strong> These defaults apply to all staff unless overridden at the employee level.
-                    Individual overrides can be configured in Staff Management → Employee → Leave Entitlement section.
+            <div className="flex justify-between items-center bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-sm text-blue-700 max-w-2xl">
+                    <strong>Organization Leave Policies:</strong> Define the leave types available to your staff.
+                    These defaults apply to all employees unless overridden individually.
                 </p>
-            </div>
-
-            {leaveTypes.length === 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                    <div className="text-4xl mb-4">📋</div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">No Leave Types Configured</h3>
-                    <p className="text-slate-600 mb-4">
-                        Initialize Kenya-standard leave types to get started with leave management.
-                    </p>
+                <div className="flex space-x-3">
+                    {leaveTypes.length === 0 && (
+                        <button
+                            onClick={handleInitializeDefaults}
+                            disabled={loading}
+                            className="text-sm text-blue-700 underline hover:text-blue-800 disabled:opacity-50"
+                        >
+                            Initialize Defaults
+                        </button>
+                    )}
                     <button
-                        onClick={handleInitializeDefaults}
-                        disabled={loading}
-                        className="bg-[#0f766e] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#0d9488] disabled:bg-slate-400 transition-colors"
+                        onClick={() => setShowModal(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors"
                     >
-                        {loading ? 'Creating...' : '📝 Initialize Default Leave Types'}
+                        + Add Policy
                     </button>
                 </div>
-            )}
+            </div>
 
-            {leaveTypes.length > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Leave Type</th>
+                            <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Days/Year</th>
+                            <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Paid</th>
+                            <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Approval</th>
+                            <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Document</th>
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Notes</th>
+                            <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {leaveTypes.length === 0 ? (
                             <tr>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Leave Type</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Days/Year</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Paid</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Approval</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Document</th>
-                                <th className="text-center px-6 py-4 text-sm font-semibold text-slate-600">Carry Forward</th>
-                                <th className="text-left px-6 py-4 text-sm font-semibold text-slate-600">Notes</th>
+                                <td colSpan={7} className="text-center py-8 text-slate-500">No leave policies found. Add one to get started.</td>
                             </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {leaveTypes.map(lt => (
-                                <tr key={lt.id} className="hover:bg-slate-50">
+                        ) : (
+                            leaveTypes.map(lt => (
+                                <tr key={lt.id} className="hover:bg-slate-50 group">
                                     <td className="px-6 py-4 font-medium text-slate-900">{lt.name}</td>
                                     <td className="px-6 py-4 text-center">{lt.daysAllowed === 999 ? 'Unlimited' : lt.daysAllowed}</td>
-                                    <td className="px-6 py-4 text-center">{lt.isPaid ? <span className="text-emerald-600">✓</span> : <span className="text-slate-400">✗</span>}</td>
-                                    <td className="px-6 py-4 text-center">{lt.requiresApproval ? <span className="text-blue-600">✓</span> : <span className="text-slate-400">✗</span>}</td>
-                                    <td className="px-6 py-4 text-center">{lt.requiresDocument ? <span className="text-amber-600">✓</span> : <span className="text-slate-400">✗</span>}</td>
-                                    <td className="px-6 py-4 text-center">{lt.carryForwardAllowed ? <span className="text-purple-600">✓</span> : <span className="text-slate-400">✗</span>}</td>
-                                    <td className="px-6 py-4 text-sm text-slate-500">{lt.notes || '-'}</td>
+                                    <td className="px-6 py-4 text-center">{lt.isPaid ? <span className="text-emerald-600">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="px-6 py-4 text-center">{lt.requiresApproval ? <span className="text-blue-600">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="px-6 py-4 text-center">{lt.requiresDocument ? <span className="text-amber-600">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="px-6 py-4 text-sm text-slate-500 truncate max-w-xs">{lt.notes || '-'}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => { setEditingType(lt); setShowModal(true); }}
+                                                className="p-1 text-slate-500 hover:text-blue-600"
+                                                title="Edit"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(lt.id)}
+                                                className="p-1 text-slate-500 hover:text-red-600"
+                                                title="Delete"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Config Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl w-full max-w-lg p-6 m-4 max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold">{editingType ? 'Edit Policy' : 'New Leave Policy'}</h2>
+                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Policy Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Days Allowed *</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                                        value={formData.daysAllowed}
+                                        onChange={e => setFormData({ ...formData, daysAllowed: parseInt(e.target.value) })}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">Set 999 for unlimited.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Max Carry Forward</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                                        value={formData.maxCarryForwardDays || 0}
+                                        onChange={e => setFormData({ ...formData, maxCarryForwardDays: parseInt(e.target.value) })}
+                                        disabled={!formData.carryForwardAllowed}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pt-2">
+                                <label className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded text-blue-600"
+                                        checked={formData.isPaid}
+                                        onChange={e => setFormData({ ...formData, isPaid: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">Paid Leave (Payroll Impact)</span>
+                                </label>
+                                <label className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded text-blue-600"
+                                        checked={formData.requiresApproval}
+                                        onChange={e => setFormData({ ...formData, requiresApproval: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">Requires Manager Approval</span>
+                                </label>
+                                <label className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded text-blue-600"
+                                        checked={formData.requiresDocument}
+                                        onChange={e => setFormData({ ...formData, requiresDocument: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">Requires Attachment (e.g. sick note)</span>
+                                </label>
+                                <label className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded text-blue-600"
+                                        checked={formData.carryForwardAllowed}
+                                        onChange={e => setFormData({ ...formData, carryForwardAllowed: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">Allow Carry Forward to Next Year</span>
+                                </label>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Notes/Description</label>
+                                <textarea
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg"
+                                    rows={2}
+                                    value={formData.notes || ''}
+                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="flex space-x-3 pt-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 py-2 border border-slate-300 rounded-lg font-semibold hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Saving...' : 'Save Policy'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, scheduleService, settingsService, policyDocumentsService, organizationService } from '../../lib/services';
+import { getTodayDateKE, formatTimeKE, formatDateWithDayKE, formatDateFullKE, getMondayOfWeekKE } from '../../lib/utils/dateFormat';
 import type { AttendanceRecord, Shift, OrganizationSettings, PolicyDocument, Organization, Location } from '../../types';
 
 const TodayMyWork: React.FC = () => {
@@ -34,7 +35,8 @@ const TodayMyWork: React.FC = () => {
         if (!user?.organizationId || !user?.id) return;
         setLoading(true);
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Use Kenya timezone for accurate "today" calculation
+            const today = getTodayDateKE();
             const endOfWeek = new Date();
             endOfWeek.setDate(endOfWeek.getDate() + 7);
 
@@ -180,40 +182,43 @@ const TodayMyWork: React.FC = () => {
     // Format time
     const formatTime = (isoString?: string) => {
         if (!isoString) return '--:--';
+        // Use util function if available, fallback to local
+        if (typeof formatTimeKE === 'function') return formatTimeKE(isoString);
         return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     // Format date
     const formatDate = (dateStr: string) => {
+        if (typeof formatDateWithDayKE === 'function') return formatDateWithDayKE(dateStr);
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
-    // Get day abbreviation for week view (Sun-Sat)
+    // Get canonical Monday for the current week (Kenya time)
+    // This ensures the week view is always Mon-Sun relative to the current week
+    const currentWeekMonday = getMondayOfWeekKE();
+
+    // Helper: Get date for a specific day index (0=Mon, 1=Tue... 6=Sun)
+    const getDateForWeekDay = (dayIndex: number) => {
+        const date = new Date(currentWeekMonday);
+        date.setDate(currentWeekMonday.getDate() + dayIndex);
+        return date;
+    };
+
+    // Get day abbreviation
     const getDayAbbrev = (dayIndex: number) => {
-        const today = new Date();
-        const currentDay = today.getDay(); // 0 = Sunday, 6 = Saturday
-        const daysFromSunday = dayIndex; // 0-6 for Sun-Sat
-        const offset = daysFromSunday - currentDay;
-        const date = new Date(today);
-        date.setDate(today.getDate() + offset);
-        return date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3);
+        return getDateForWeekDay(dayIndex).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3);
     };
 
-    // Get day number for week view (Sun-Sat)
+    // Get day number
     const getDayNum = (dayIndex: number) => {
-        const today = new Date();
-        const currentDay = today.getDay(); // 0 = Sunday, 6 = Saturday
-        const daysFromSunday = dayIndex; // 0-6 for Sun-Sat
-        const offset = daysFromSunday - currentDay;
-        const date = new Date(today);
-        date.setDate(today.getDate() + offset);
-        return date.getDate();
+        return getDateForWeekDay(dayIndex).getDate();
     };
 
-    // Check if a day index is today
+    // Check if a day index (0-6 Mon-Sun) corresponds to today
     const isToday = (dayIndex: number) => {
-        return dayIndex === new Date().getDay();
+        const date = getDateForWeekDay(dayIndex);
+        return date.toISOString().split('T')[0] === getTodayDateKE();
     };
 
     if (loading) {
@@ -224,7 +229,9 @@ const TodayMyWork: React.FC = () => {
         );
     }
 
-    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const todayStr = typeof formatDateFullKE === 'function'
+        ? formatDateFullKE(new Date())
+        : new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
     return (
         <div className="p-6 md:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
@@ -394,21 +401,21 @@ const TodayMyWork: React.FC = () => {
                         <div className="flex items-center justify-between mb-4">
                             <button
                                 onClick={() => navigate('/employee/schedule')}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                                className="text-sm font-medium text-[#0f766e] hover:text-teal-700 transition-colors"
                             >
                                 View This Week
                             </button>
                             <span className="text-sm text-slate-400">All locations</span>
                         </div>
 
-                        {/* Week Days - Sunday to Saturday */}
+                        {/* Week Days - Monday (0) to Sunday (6) */}
                         <div className="grid grid-cols-7 gap-1 mb-4">
                             {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
                                 const isTodayDay = isToday(dayIndex);
                                 return (
                                     <div
                                         key={dayIndex}
-                                        className={`text-center py-2 rounded-lg ${isTodayDay ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+                                        className={`text-center py-2 rounded-lg ${isTodayDay ? 'bg-[#0f766e] text-white' : 'text-slate-600'}`}
                                     >
                                         <div className="text-xs font-medium">{getDayAbbrev(dayIndex)}</div>
                                         <div className={`text-lg font-bold ${isTodayDay ? 'text-white' : 'text-slate-900'}`}>{getDayNum(dayIndex)}</div>

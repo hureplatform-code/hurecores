@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { reportsService, ReportFilters } from '../../lib/services/reports.service';
 import { organizationService } from '../../lib/services/organization.service';
-import {
-    reportsService,
-    type ReportFilters,
-    type StaffReportRow,
-    type AttendanceReportRow,
-    type SchedulingReportRow,
-    type LeaveReportRow,
-    type PayrollReportRow,
-    type ComplianceReportRow,
-    type AuditReportRow
-} from '../../lib/services/reports.service';
 import { exportToCSV, formatCentsForCSV, formatDateForCSV, formatDateTimeForCSV, type CSVColumn } from '../../lib/utils/exportCSV';
 import type { Location } from '../../types';
+import { formatDateTimeKE, formatDateKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
+import { PrivacyMask, PrivacyToggle } from '../common/PrivacyControl';
 
 type ReportType = 'staff' | 'attendance' | 'scheduling' | 'leave' | 'payroll' | 'compliance' | 'audit';
 
@@ -32,6 +25,7 @@ const ReportsView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<ReportType>('staff');
     const [loading, setLoading] = useState(false);
     const [locations, setLocations] = useState<Location[]>([]);
+    const [showFinancials, setShowFinancials] = useState(false);
 
     // Filters
     const [filters, setFilters] = useState<ReportFilters>({
@@ -46,13 +40,7 @@ const ReportsView: React.FC = () => {
     });
 
     // Report data
-    const [staffReport, setStaffReport] = useState<StaffReportRow[]>([]);
-    const [attendanceReport, setAttendanceReport] = useState<AttendanceReportRow[]>([]);
-    const [schedulingReport, setSchedulingReport] = useState<SchedulingReportRow[]>([]);
-    const [leaveReport, setLeaveReport] = useState<LeaveReportRow[]>([]);
-    const [payrollReport, setPayrollReport] = useState<PayrollReportRow[]>([]);
-    const [complianceReport, setComplianceReport] = useState<ComplianceReportRow[]>([]);
-    const [auditReport, setAuditReport] = useState<AuditReportRow[]>([]);
+    const [reportData, setReportData] = useState<any[]>([]);
 
     // Load locations on mount
     useEffect(() => {
@@ -83,36 +71,31 @@ const ReportsView: React.FC = () => {
         setLoading(true);
 
         try {
+            let data: any[] = [];
             switch (activeTab) {
                 case 'staff':
-                    const staffData = await reportsService.getStaffReport(user.organizationId, filters, locations);
-                    setStaffReport(staffData);
+                    data = await reportsService.getStaffReport(user.organizationId, filters, locations);
                     break;
                 case 'attendance':
-                    const attendanceData = await reportsService.getAttendanceReport(user.organizationId, filters, locations);
-                    setAttendanceReport(attendanceData);
+                    data = await reportsService.getAttendanceReport(user.organizationId, filters, locations);
                     break;
                 case 'scheduling':
-                    const schedulingData = await reportsService.getSchedulingReport(user.organizationId, filters, locations);
-                    setSchedulingReport(schedulingData);
+                    data = await reportsService.getSchedulingReport(user.organizationId, filters, locations);
                     break;
                 case 'leave':
-                    const leaveData = await reportsService.getLeaveReport(user.organizationId, filters);
-                    setLeaveReport(leaveData);
+                    data = await reportsService.getLeaveReport(user.organizationId, filters);
                     break;
                 case 'payroll':
-                    const payrollData = await reportsService.getPayrollReport(user.organizationId, filters, locations);
-                    setPayrollReport(payrollData);
+                    data = await reportsService.getPayrollReport(user.organizationId, filters, locations);
                     break;
                 case 'compliance':
-                    const complianceData = await reportsService.getComplianceReport(user.organizationId);
-                    setComplianceReport(complianceData);
+                    data = await reportsService.getComplianceReport(user.organizationId);
                     break;
                 case 'audit':
-                    const auditData = await reportsService.getAuditReport(user.organizationId, filters);
-                    setAuditReport(auditData);
+                    data = await reportsService.getAuditReport(user.organizationId, filters);
                     break;
             }
+            setReportData(data);
         } catch (error) {
             console.error('Error loading report:', error);
         } finally {
@@ -123,7 +106,7 @@ const ReportsView: React.FC = () => {
     const handleExportCSV = () => {
         switch (activeTab) {
             case 'staff':
-                exportToCSV(staffReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Name', accessor: 'fullName' },
                     { header: 'Email', accessor: 'email' },
                     { header: 'Phone', accessor: 'phone' },
@@ -133,13 +116,13 @@ const ReportsView: React.FC = () => {
                     { header: 'Employment Type', accessor: 'employmentType' },
                     { header: 'Status', accessor: 'staffStatus' },
                     { header: 'Location', accessor: 'locationName' },
-                    { header: 'Hire Date', accessor: (r) => formatDateForCSV(r.hireDate) },
+                    { header: 'Hire Date', accessor: (r: any) => formatDateForCSV(r.hireDate) },
                     { header: 'Pay Method', accessor: 'payMethod' },
-                    { header: 'Monthly Salary', accessor: (r) => formatCentsForCSV(r.monthlySalaryCents) },
+                    { header: 'Monthly Salary', accessor: (r: any) => formatCentsForCSV(r.monthlySalaryCents) },
                 ], 'staff_report');
                 break;
             case 'attendance':
-                exportToCSV(attendanceReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Staff Name', accessor: 'staffName' },
                     { header: 'Date', accessor: 'date' },
                     { header: 'Clock In', accessor: 'clockIn' },
@@ -154,7 +137,7 @@ const ReportsView: React.FC = () => {
                 ], 'attendance_report');
                 break;
             case 'scheduling':
-                exportToCSV(schedulingReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Date', accessor: 'date' },
                     { header: 'Location', accessor: 'locationName' },
                     { header: 'Start Time', accessor: 'startTime' },
@@ -163,11 +146,11 @@ const ReportsView: React.FC = () => {
                     { header: 'Staff Assigned', accessor: 'staffAssigned' },
                     { header: 'Fill Rate %', accessor: 'fillRate' },
                     { header: 'Unfilled', accessor: 'unfilledCount' },
-                    { header: 'Is Filled', accessor: (r) => r.isFilled ? 'Yes' : 'No' },
+                    { header: 'Is Filled', accessor: (r: any) => r.isFilled ? 'Yes' : 'No' },
                 ], 'scheduling_report');
                 break;
             case 'leave':
-                exportToCSV(leaveReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Staff Name', accessor: 'staffName' },
                     { header: 'Leave Type', accessor: 'leaveType' },
                     { header: 'Start Date', accessor: 'startDate' },
@@ -176,30 +159,30 @@ const ReportsView: React.FC = () => {
                     { header: 'Status', accessor: 'status' },
                     { header: 'Balance Before', accessor: 'balanceBefore' },
                     { header: 'Balance After', accessor: 'balanceAfter' },
-                    { header: 'Is Paid', accessor: (r) => r.isPaid ? 'Yes' : 'No' },
+                    { header: 'Is Paid', accessor: (r: any) => r.isPaid ? 'Yes' : 'No' },
                     { header: 'Approved By', accessor: 'approvedBy' },
                 ], 'leave_report');
                 break;
             case 'payroll':
-                exportToCSV(payrollReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Staff Name', accessor: 'staffName' },
                     { header: 'Period', accessor: 'periodName' },
-                    { header: 'Base Salary', accessor: (r) => formatCentsForCSV(r.baseSalaryCents) },
+                    { header: 'Base Salary', accessor: (r: any) => formatCentsForCSV(r.baseSalaryCents) },
                     { header: 'Worked Units', accessor: 'workedUnits' },
                     { header: 'Paid Leave', accessor: 'paidLeaveUnits' },
                     { header: 'Unpaid Leave', accessor: 'unpaidLeaveUnits' },
-                    { header: 'Allowances', accessor: (r) => formatCentsForCSV(r.allowancesTotalCents) },
-                    { header: 'Deductions', accessor: (r) => formatCentsForCSV(r.deductionsTotalCents) },
-                    { header: 'Gross Pay', accessor: (r) => formatCentsForCSV(r.grossPayCents) },
-                    { header: 'Net Pay', accessor: (r) => formatCentsForCSV(r.netPayCents) },
-                    { header: 'Is Paid', accessor: (r) => r.isPaid ? 'Yes' : 'No' },
+                    { header: 'Allowances', accessor: (r: any) => formatCentsForCSV(r.allowancesTotalCents) },
+                    { header: 'Deductions', accessor: (r: any) => formatCentsForCSV(r.deductionsTotalCents) },
+                    { header: 'Gross Pay', accessor: (r: any) => formatCentsForCSV(r.grossPayCents) },
+                    { header: 'Net Pay', accessor: (r: any) => formatCentsForCSV(r.netPayCents) },
+                    { header: 'Is Paid', accessor: (r: any) => r.isPaid ? 'Yes' : 'No' },
                     { header: 'Location', accessor: 'locationName' },
                 ], 'payroll_report');
                 break;
             case 'compliance':
-                exportToCSV(complianceReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Document Name', accessor: 'documentName' },
-                    { header: 'Uploaded At', accessor: (r) => formatDateTimeForCSV(r.uploadedAt) },
+                    { header: 'Uploaded At', accessor: (r: any) => formatDateTimeForCSV(r.uploadedAt) },
                     { header: 'Staff Assigned', accessor: 'totalStaffAssigned' },
                     { header: 'Acknowledged', accessor: 'acknowledgedCount' },
                     { header: 'Pending', accessor: 'pendingCount' },
@@ -207,12 +190,12 @@ const ReportsView: React.FC = () => {
                 ], 'compliance_report');
                 break;
             case 'audit':
-                exportToCSV(auditReport, [
+                exportToCSV(reportData as any, [
                     { header: 'Event Type', accessor: 'eventType' },
                     { header: 'Description', accessor: 'description' },
                     { header: 'User Email', accessor: 'userEmail' },
                     { header: 'Target', accessor: 'targetTable' },
-                    { header: 'Date/Time', accessor: (r) => formatDateTimeForCSV(r.createdAt) },
+                    { header: 'Date/Time', accessor: (r: any) => formatDateTimeForCSV(r.createdAt) },
                 ], 'audit_report');
                 break;
         }
@@ -223,16 +206,7 @@ const ReportsView: React.FC = () => {
     };
 
     const getReportData = () => {
-        switch (activeTab) {
-            case 'staff': return staffReport;
-            case 'attendance': return attendanceReport;
-            case 'scheduling': return schedulingReport;
-            case 'leave': return leaveReport;
-            case 'payroll': return payrollReport;
-            case 'compliance': return complianceReport;
-            case 'audit': return auditReport;
-            default: return [];
-        }
+        return reportData;
     };
 
     // Render filter panel
@@ -258,20 +232,16 @@ const ReportsView: React.FC = () => {
                     <>
                         <div className="min-w-[140px]">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-                            <input
-                                type="date"
-                                value={filters.startDate}
-                                onChange={(e) => updateFilter('startDate', e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            <DateInput
+                                value={filters.startDate || ''}
+                                onChange={(value) => updateFilter('startDate', value)}
                             />
                         </div>
                         <div className="min-w-[140px]">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-                            <input
-                                type="date"
-                                value={filters.endDate}
-                                onChange={(e) => updateFilter('endDate', e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            <DateInput
+                                value={filters.endDate || ''}
+                                onChange={(value) => updateFilter('endDate', value)}
                             />
                         </div>
                     </>
@@ -437,39 +407,39 @@ const ReportsView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {activeTab === 'staff' && staffReport.map((row, i) => (
+                        {activeTab === 'staff' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm font-medium text-slate-900">{row.fullName}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.systemRole}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.jobTitle || '-'}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.employmentType}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.staffStatus === 'Active' ? 'bg-green-100 text-green-700' :
-                                            row.staffStatus === 'Inactive' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                        }`}>{row.staffStatus}</span>
+                                    <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${row.staffStatus === 'Active' ? 'bg-green-100 text-green-700' :
+                                        row.staffStatus === 'Inactive' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                        } `}>{row.staffStatus}</span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.locationName || '-'}</td>
                             </tr>
                         ))}
-                        {activeTab === 'attendance' && attendanceReport.map((row, i) => (
+                        {activeTab === 'attendance' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm font-medium text-slate-900">{row.staffName}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.date}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.clockIn || '-'}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.clockOut || '-'}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.actualHours.toFixed(1)}h</td>
-                                <td className="px-4 py-3 text-sm text-teal-600 font-medium">{row.overtimeHours > 0 ? `+${row.overtimeHours.toFixed(1)}h` : '-'}</td>
-                                <td className="px-4 py-3 text-sm text-red-600">{row.lateMinutes > 0 ? `${row.lateMinutes}m` : '-'}</td>
+                                <td className="px-4 py-3 text-sm text-teal-600 font-medium">{row.overtimeHours > 0 ? `+ ${row.overtimeHours.toFixed(1)} h` : '-'}</td>
+                                <td className="px-4 py-3 text-sm text-red-600">{row.lateMinutes > 0 ? `${row.lateMinutes} m` : '-'}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'Present' ? 'bg-green-100 text-green-700' :
-                                            row.status === 'Absent' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                        }`}>{row.status}</span>
+                                    <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${row.status === 'Present' ? 'bg-green-100 text-green-700' :
+                                        row.status === 'Absent' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                        } `}>{row.status}</span>
                                 </td>
                             </tr>
                         ))}
-                        {activeTab === 'scheduling' && schedulingReport.map((row, i) => (
+                        {activeTab === 'scheduling' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm text-slate-900">{row.date}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.locationName}</td>
@@ -478,65 +448,85 @@ const ReportsView: React.FC = () => {
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.staffAssigned}</td>
                                 <td className="px-4 py-3 text-sm font-medium">{row.fillRate}%</td>
                                 <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.isFilled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                        }`}>{row.isFilled ? 'Filled' : `${row.unfilledCount} Open`}</span>
+                                    <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${row.isFilled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                        } `}>{row.isFilled ? 'Filled' : `${row.unfilledCount} Open`}</span>
                                 </td>
                             </tr>
                         ))}
-                        {activeTab === 'leave' && leaveReport.map((row, i) => (
+                        {activeTab === 'leave' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm font-medium text-slate-900">{row.staffName}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.leaveType}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.startDate} → {row.endDate}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.daysRequested}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            row.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                        }`}>{row.status}</span>
+                                    <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${row.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                        row.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                        } `}>{row.status}</span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.isPaid ? 'Yes' : 'No'}</td>
                             </tr>
                         ))}
-                        {activeTab === 'payroll' && payrollReport.map((row, i) => (
+                        {activeTab === 'payroll' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm font-medium text-slate-900">{row.staffName}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.periodName}</td>
-                                <td className="px-4 py-3 text-sm text-slate-600">KES {(row.baseSalaryCents / 100).toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm text-green-600">+KES {(row.allowancesTotalCents / 100).toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm text-red-600">-KES {(row.deductionsTotalCents / 100).toLocaleString()}</td>
-                                <td className="px-4 py-3 text-sm font-bold text-slate-900">KES {(row.netPayCents / 100).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm text-slate-600">
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        KES {(row.baseSalaryCents / 100).toLocaleString()}
+                                    </PrivacyMask>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-green-600">
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        +KES {(row.allowancesTotalCents / 100).toLocaleString()}
+                                    </PrivacyMask>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-red-600">
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        -KES {(row.deductionsTotalCents / 100).toLocaleString()}
+                                    </PrivacyMask>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-bold text-slate-900">
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        KES {(row.netPayCents / 100).toLocaleString()}
+                                    </PrivacyMask>
+                                </td>
                                 <td className="px-4 py-3">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${row.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                        }`}>{row.isPaid ? 'Paid' : 'Pending'}</span>
+                                    <span className={`px - 2 py - 1 text - xs font - medium rounded - full ${row.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                        } `}>{row.isPaid ? 'Paid' : 'Pending'}</span>
                                 </td>
                             </tr>
                         ))}
-                        {activeTab === 'compliance' && complianceReport.map((row, i) => (
+                        {activeTab === 'compliance' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3 text-sm font-medium text-slate-900">{row.documentName}</td>
-                                <td className="px-4 py-3 text-sm text-slate-600">{new Date(row.uploadedAt).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                    {formatDateKE(row.uploadedAt)}
+                                </td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.totalStaffAssigned}</td>
                                 <td className="px-4 py-3 text-sm text-green-600">{row.acknowledgedCount}</td>
                                 <td className="px-4 py-3 text-sm text-red-600">{row.pendingCount}</td>
                                 <td className="px-4 py-3">
                                     <div className="flex items-center">
                                         <div className="w-16 bg-slate-200 rounded-full h-2 mr-2">
-                                            <div className="bg-teal-600 h-2 rounded-full" style={{ width: `${row.acknowledgedRate}%` }} />
+                                            <div className="bg-teal-600 h-2 rounded-full" style={{ width: `${row.acknowledgedRate}% ` }} />
                                         </div>
                                         <span className="text-sm font-medium">{row.acknowledgedRate}%</span>
                                     </div>
                                 </td>
                             </tr>
                         ))}
-                        {activeTab === 'audit' && auditReport.map((row, i) => (
+                        {activeTab === 'audit' && reportData.map((row: any, i) => (
                             <tr key={i} className="hover:bg-slate-50">
                                 <td className="px-4 py-3">
                                     <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-700">{row.eventType}</span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{row.description}</td>
                                 <td className="px-4 py-3 text-sm text-slate-600">{row.userEmail || 'System'}</td>
-                                <td className="px-4 py-3 text-sm text-slate-500">{new Date(row.createdAt).toLocaleString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                    {formatDateTimeKE(row.createdAt)}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -546,20 +536,25 @@ const ReportsView: React.FC = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-4 md:p-8 w-full max-w-[1600px] mx-auto">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+                    <h2 className="text-2xl font-bold text-[#1a2e35]">Reports</h2>
                     <p className="text-sm text-slate-500 mt-1">Generate and export operational reports</p>
                 </div>
-                <button
-                    onClick={handleExportCSV}
-                    disabled={!getReportData().length}
-                    className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                    <span className="mr-2">📥</span> Export CSV
-                </button>
+                <div className="flex gap-2">
+                    {activeTab === 'payroll' && (
+                        <PrivacyToggle isVisible={showFinancials} onToggle={() => setShowFinancials(!showFinancials)} label={showFinancials ? 'Hide Financials' : 'Show Financials'} />
+                    )}
+                    <button
+                        onClick={handleExportCSV}
+                        disabled={!getReportData().length}
+                        className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    >
+                        <span className="mr-2">📥</span> Export CSV
+                    </button>
+                </div>
             </div>
 
             {/* Report Type Tabs */}
@@ -568,10 +563,10 @@ const ReportsView: React.FC = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === tab.id
-                                ? 'bg-teal-600 text-white'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                            }`}
+                        className={`px - 4 py - 2 rounded - lg font - medium text - sm transition - colors ${activeTab === tab.id
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                            } `}
                     >
                         <span className="mr-1">{tab.icon}</span> {tab.label}
                     </button>

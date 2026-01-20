@@ -18,6 +18,7 @@ import { auth } from '../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { emailService } from './email.service';
 import { leaveService } from './leave.service';
+import { leaveEntitlementService } from './leave-entitlement.service';
 import type {
   Profile,
   CreateStaffInput,
@@ -49,8 +50,19 @@ export const staffService = {
 
     const staff = await Promise.all(
       snapshot.docs.map(async doc => {
-        const data = doc.data() as Profile;
-        const profile: Profile = { id: doc.id, ...data };
+        const data = doc.data();
+        const profile: Profile = { id: doc.id, ...data } as Profile;
+
+        // Normalize license data: Map flat fields to nested object if needed
+        if (!profile.license && (data.licenseType || data.licenseNumber)) {
+          profile.license = {
+            type: data.licenseType || '',
+            number: data.licenseNumber || '',
+            authority: data.licenseAuthority || '',
+            expiryDate: data.licenseExpiry || '',
+            verificationStatus: data.vettingStatus === 'Verified' ? 'Verified' : 'Pending'
+          };
+        }
 
         // Fetch location name if locationId exists
         if (data.locationId && organizationId) {
@@ -158,6 +170,7 @@ export const staffService = {
         licenseNumber: input.licenseNumber || null,
         licenseAuthority: input.licenseAuthority || null,
         licenseExpiry: input.licenseExpiry || null,
+        licenseDocumentUrl: input.licenseDocumentUrl || null,
         status: 'pending', // pending, accepted, expired
         invitedBy: auth.currentUser?.uid || null,
         invitedByEmail: auth.currentUser?.email || null,
@@ -265,7 +278,7 @@ export const staffService = {
           expiryDate: invitation.licenseExpiry || '',
           issuedDate: '',
           verificationStatus: 'Pending',
-          documentUrl: ''
+          documentUrl: invitation.licenseDocumentUrl || ''
         } : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -288,12 +301,12 @@ export const staffService = {
         { inviteId }
       );
 
-      // Initialize leave balances for the new staff member
+      // Initialize leave entitlements for the new staff member
       try {
-        await leaveService.initializeStaffBalances(invitation.organizationId, userId);
+        await leaveEntitlementService.initializeStaffEntitlements(invitation.organizationId, userId);
       } catch (leaveError) {
-        console.error('Failed to initialize staff leave balances:', leaveError);
-        // Don't fail the acceptance if leave initialization fails
+        console.error('Failed to initialize leave entitlements:', leaveError);
+        // Don't fail the whole process, just log it. Admin can fix later.
       }
 
       // Notify organization admins about new staff member
@@ -576,10 +589,8 @@ export const staffService = {
       return { success: false, error: 'Staff member not found' };
     }
 
-    // Allow permissions for any role (except OWNER which is ignored anyway)
-    if (profile.systemRole === 'OWNER') {
-      return { success: true }; // Owner always has full access
-    }
+    // Allow permissions for any role
+    // Removed restriction that Owners are ignored - now they can have specific permission sets if desired (for UI control)
 
     // Removed restriction that only Admins can have permissions
     // Removed restriction that at least one permission must be selected (allowing clearing of permissions)

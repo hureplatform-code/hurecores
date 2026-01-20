@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { staffService } from '../../lib/services/staff.service';
 import { organizationService } from '../../lib/services/organization.service';
+import { roleService, CustomRole } from '../../lib/services/role.service';
 import type { Profile, SystemRole, StaffPermissions } from '../../types';
 
 const PermissionsManager: React.FC = () => {
@@ -11,6 +12,7 @@ const PermissionsManager: React.FC = () => {
 
     // Data state
     const [staff, setStaff] = useState<Profile[]>([]);
+    const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [adminSeats, setAdminSeats] = useState({ used: 0, max: 5 });
@@ -52,12 +54,22 @@ const PermissionsManager: React.FC = () => {
         setLoading(true);
         setError('');
         try {
+            // Load core data (Critical)
             const [staffData, seatData] = await Promise.all([
                 staffService.getAll(user.organizationId),
                 staffService.checkAdminSeatAvailability(user.organizationId)
             ]);
             setStaff(staffData);
             setAdminSeats({ used: seatData.used, max: seatData.max });
+
+            // Load roles (Non-critical, may fail if rules not deployed/synced)
+            try {
+                const rolesData = await roleService.getRoles(user.organizationId);
+                setCustomRoles(rolesData);
+            } catch (roleErr) {
+                console.warn('Failed to load custom roles (likely waiting for permission propagation):', roleErr);
+                // Don't set main error, just log it. Features will just be missing temporarily.
+            }
         } catch (err: any) {
             console.error('Error loading staff:', err);
             setError('Failed to load staff data');
@@ -86,21 +98,71 @@ const PermissionsManager: React.FC = () => {
 
     const handleCreateRole = async (e: React.FormEvent) => {
         e.preventDefault();
-        // For now, since we don't have a dedicated Roles collection API prepared in this turn, 
-        // we will just close the modal and show a success message or Todo.
-        // In a full implementation, this would save to a 'roles' collection.
-        setIsRoleModalOpen(false);
-        setNewRole({ name: '', description: '', permissions: [] });
-        alert('Custom permission sets created! You can now assign this access pattern manually.');
+        if (!user?.organizationId) return;
+
+        setLoading(true);
+        try {
+            // Convert string[] back to StaffPermissions map
+            const permissionsMap = availablePermissions.reduce((acc, perm) => {
+                acc[perm.id] = newRole.permissions.includes(perm.id);
+                return acc;
+            }, {} as Record<string, boolean>) as unknown as StaffPermissions;
+
+            if (updatingRole && updatingRole !== 'VIEW_ONLY') {
+                // Update existing custom role
+                await roleService.updateRole(user.organizationId, updatingRole, {
+                    name: newRole.name,
+                    description: newRole.description,
+                    permissions: permissionsMap
+                });
+            } else {
+                // Create new role
+                await roleService.createRole(
+                    user.organizationId,
+                    newRole.name,
+                    newRole.description,
+                    permissionsMap
+                );
+            }
+
+            await loadData();
+            setIsRoleModalOpen(false);
+            setNewRole({ name: '', description: '', permissions: [] });
+            setUpdatingRole(null);
+        } catch (error) {
+            console.error('Error saving role:', error);
+            alert('Failed to save role');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteRole = async (roleId: string) => {
+        if (!user?.organizationId || !confirm('Are you sure you want to delete this role definition?')) return;
+        try {
+            await roleService.deleteRole(user.organizationId, roleId);
+            loadData();
+        } catch (error) {
+            console.error('Error deleting role:', error);
+            alert('Failed to delete role');
+        }
     };
 
     const openManageAccess = (profile: Profile) => {
         setManagingUser(profile);
         // Initialize with existing permissions or defaults based on role if needed
-        // For now, we load what's in the profile.permissions object
-        const currentPerms = profile.permissions
-            ? Object.entries(profile.permissions).filter(([_, v]) => v).map(([k]) => k)
-            : [];
+        let currentPerms: string[] = [];
+
+        if (profile.permissions && Object.values(profile.permissions).some(v => v)) {
+            // Parse existing permissions
+            currentPerms = Object.entries(profile.permissions)
+                .filter(([_, v]) => v)
+                .map(([k]) => k);
+        } else if (profile.systemRole === 'ADMIN' || profile.systemRole === 'OWNER') {
+            // Default to ALL permissions for Admin/Owner if no specific overrides exist
+            currentPerms = availablePermissions.map(p => p.id);
+        }
+
         setUserPermissions(currentPerms);
     };
 
@@ -251,7 +313,6 @@ const PermissionsManager: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => openManageAccess(member)}
-                                                disabled={member.systemRole === 'OWNER'}
                                                 className="text-blue-600 font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 Edit Permissions
@@ -267,39 +328,91 @@ const PermissionsManager: React.FC = () => {
 
             {activeTab === 'Roles' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* System Roles */}
                     {[
                         { name: 'Owner', desc: 'Full access to all features.', type: 'System', editable: false },
                         { name: 'Admin', desc: 'Can manage most settings except billing.', type: 'System', editable: false },
                         { name: 'Staff', desc: 'Basic access to own schedule and profile.', type: 'System', editable: false },
                     ].map((role, i) => (
-                        <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
+                        <div key={`system-${i}`} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
                             <div className="flex justify-between items-start mb-4">
                                 <h3 className="font-bold text-lg text-slate-900">{role.name}</h3>
                                 <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded uppercase">{role.type}</span>
                             </div>
-                            <p className="text-slate-500 text-sm mb-6">{role.desc}</p>
+                            <p className="text-slate-500 text-sm mb-6 min-h-[40px]">{role.desc}</p>
                             <button
                                 onClick={() => {
-                                    // For system roles, we just show them in the modal as view-only
-                                    // Assuming "Admin" has most permissions and "Staff" has basic ones for demo
-                                    const defaultPerms = role.name === 'Admin'
+                                    const defaultPerms = (role.name === 'Admin' || role.name === 'Owner')
                                         ? availablePermissions.map(p => p.id)
                                         : role.name === 'Staff' ? ['attendance', 'scheduling', 'leave'] : [];
 
                                     setNewRole({
-                                        name: role.name,
+                                        name: `${role.name} (Custom)`,
                                         description: role.desc,
                                         permissions: defaultPerms
                                     });
-                                    setUpdatingRole('VIEW_ONLY'); // Marker to disable saving/editing
+                                    setUpdatingRole(null); // Set to null to treat as NEW role creation
                                     setIsRoleModalOpen(true);
                                 }}
                                 className="w-full py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50"
                             >
-                                View Permissions
+                                Customize / Copy
                             </button>
                         </div>
                     ))}
+
+                    {/* Custom Roles */}
+                    {customRoles.map((role) => (
+                        <div key={role.id} className="bg-white p-6 rounded-2xl border border-blue-200 shadow-sm hover:shadow-md transition-all">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="font-bold text-lg text-slate-900">{role.name}</h3>
+                                <div className="flex space-x-2">
+                                    <span className="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-1 rounded uppercase">Custom</span>
+                                </div>
+                            </div>
+                            <p className="text-slate-500 text-sm mb-6 min-h-[40px]">{role.description || 'No description provided.'}</p>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() => {
+                                        // Parse permissions from map to array
+                                        const perms = Object.entries(role.permissions || {})
+                                            .filter(([_, enabled]) => enabled)
+                                            .map(([key]) => key);
+
+                                        setNewRole({
+                                            name: role.name,
+                                            description: role.description || '',
+                                            permissions: perms
+                                        });
+                                        setUpdatingRole(role.id);
+                                        setIsRoleModalOpen(true);
+                                    }}
+                                    className="flex-1 py-2 border border-blue-200 bg-blue-50 rounded-xl text-sm font-bold text-blue-700 hover:bg-blue-100"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteRole(role.id)}
+                                    className="px-3 py-2 border border-red-100 bg-red-50 rounded-xl text-sm font-bold text-red-600 hover:bg-red-100"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Add New Role Card */}
+                    <button
+                        onClick={() => {
+                            setNewRole({ name: '', description: '', permissions: [] });
+                            setUpdatingRole(null);
+                            setIsRoleModalOpen(true);
+                        }}
+                        className="bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center justify-center text-center group h-full min-h-[200px]"
+                    >
+                        <div className="text-4xl mb-3 text-slate-400 group-hover:text-blue-500 transition-colors">+</div>
+                        <h3 className="font-bold text-lg text-slate-600 group-hover:text-blue-700">Create New Role</h3>
+                    </button>
                 </div>
             )}
 
@@ -310,7 +423,7 @@ const PermissionsManager: React.FC = () => {
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b bg-slate-50">
                             <h3 className="text-xl font-bold text-slate-900">
-                                {updatingRole === 'VIEW_ONLY' ? 'View Role Details' : 'Create Custom Role'}
+                                {updatingRole === 'VIEW_ONLY' ? 'View Role Details' : (updatingRole ? 'Edit Custom Role' : 'Create Custom Role')}
                             </h3>
                             <p className="text-sm text-slate-500">
                                 {updatingRole === 'VIEW_ONLY' ? 'View permissions for this system role.' : 'Define a new role and its permissions.'}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { scheduleService, staffService, locationService } from '../../lib/services';
+import DateInput from '../common/DateInput';
 import type { Shift, ShiftAssignment } from '../../types';
 
 interface StaffMember {
@@ -52,13 +53,15 @@ const ManagerSchedule: React.FC = () => {
 
             const loadedShifts = await scheduleService.getShifts(
                 user.organizationId,
-                startOfWeek.toISOString().split('T')[0],
-                endOfWeek.toISOString().split('T')[0]
+                {
+                    startDate: startOfWeek.toISOString().split('T')[0],
+                    endDate: endOfWeek.toISOString().split('T')[0]
+                }
             );
             setShifts(loadedShifts || []);
 
             // Load staff members
-            const staff = await staffService.getByOrganization(user.organizationId);
+            const staff = await staffService.getAll(user.organizationId);
             setStaffMembers(staff);
 
             // Load locations
@@ -144,11 +147,11 @@ const ManagerSchedule: React.FC = () => {
                     <p className="text-slate-500">Create and manage team shifts</p>
                 </div>
                 <div className="flex gap-3 mt-4 md:mt-0">
-                    <input
-                        type="date"
+                    <DateInput
+                        label=""
                         value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                        onChange={(value) => setSelectedDate(value)}
+                        className="w-48"
                     />
                     <button
                         onClick={() => setShowCreateModal(true)}
@@ -166,16 +169,16 @@ const ManagerSchedule: React.FC = () => {
                         <div
                             key={idx}
                             className={`p-4 text-center border-r last:border-r-0 border-slate-100 ${day.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
-                                    ? 'bg-blue-50'
-                                    : 'bg-slate-50'
+                                ? 'bg-blue-50'
+                                : 'bg-slate-50'
                                 }`}
                         >
                             <div className="text-xs font-bold text-slate-500 uppercase">
                                 {day.toLocaleDateString('en-US', { weekday: 'short' })}
                             </div>
                             <div className={`text-lg font-bold ${day.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
-                                    ? 'text-blue-600'
-                                    : 'text-slate-900'
+                                ? 'text-blue-600'
+                                : 'text-slate-900'
                                 }`}>
                                 {day.getDate()}
                             </div>
@@ -260,13 +263,11 @@ const ManagerSchedule: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                                <input
-                                    type="date"
-                                    value={newShift.date}
-                                    onChange={(e) => setNewShift({ ...newShift, date: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                                <DateInput
+                                    label="Date"
                                     required
+                                    value={newShift.date}
+                                    onChange={(value) => setNewShift({ ...newShift, date: value })}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, staffService } from '../../lib/services';
 import type { AttendanceRecord, AttendanceStatus } from '../../types';
+import { formatTimeKE, formatDateKE, formatDateWithDayKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
 
 interface StaffMember {
     id: string;
@@ -37,7 +40,7 @@ const ManagerAttendance: React.FC = () => {
         setLoading(true);
         try {
             // Load staff members
-            const staff = await staffService.getByOrganization(user.organizationId);
+            const staff = await staffService.getAll(user.organizationId);
             setStaffMembers(staff);
 
             // Load attendance for selected date
@@ -80,8 +83,8 @@ const ManagerAttendance: React.FC = () => {
     };
 
     const formatTime = (isoString?: string) => {
-        if (!isoString) return '--:--';
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (!isoString) return '-';
+        return formatTimeKE(isoString);
     };
 
     if (loading) {
@@ -101,11 +104,11 @@ const ManagerAttendance: React.FC = () => {
                     <p className="text-slate-500">Monitor daily attendance for your team</p>
                 </div>
                 <div className="mt-4 md:mt-0">
-                    <input
-                        type="date"
+                    <DateInput
+                        label=""
                         value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        onChange={(value) => setSelectedDate(value)}
+                        className="w-48"
                     />
                 </div>
             </div>
@@ -136,10 +139,13 @@ const ManagerAttendance: React.FC = () => {
 
             {/* Attendance Table */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 bg-slate-50">
-                    <h3 className="font-bold text-slate-900">
-                        Attendance for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                    </h3>
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Attendance Review</h2>
+                        <p className="text-sm text-slate-500">{formatDateWithDayKE(selectedDate)}</p>
+                    </div>
+                    <div className="flex gap-3">
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -184,7 +190,7 @@ const ManagerAttendance: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(attendance?.status || 'Absent')}`}>
+                                            <span className={`inline - flex px - 3 py - 1 rounded - full text - xs font - bold uppercase ${getStatusColor(attendance?.status || 'Absent')} `}>
                                                 {attendance?.status || 'Not Clocked In'}
                                             </span>
                                         </td>

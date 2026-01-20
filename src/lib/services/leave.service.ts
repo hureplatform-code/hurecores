@@ -14,7 +14,7 @@ import {
   addAuditLog
 } from '../firestore';
 import { auth } from '../firebase';
-import type { LeaveRequest, LeaveType, LeaveBalance, LeaveStatus, Profile } from '../../types';
+import type { LeaveRequest, LeaveType, LeaveBalance, LeaveStatus, Profile, LeaveEntitlement } from '../../types';
 import { staffService } from './staff.service';
 
 // =====================================================
@@ -44,6 +44,9 @@ export const leaveService = {
     daysAllowed: number;
     isPaid: boolean;
     requiresApproval: boolean;
+    requiresDocument?: boolean;
+    carryForwardAllowed?: boolean;
+    notes?: string;
   }): Promise<LeaveType> {
     const docRef = await addDoc(collections.leaveTypes(organizationId), {
       organizationId,
@@ -52,6 +55,23 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
     return (await getDocument<LeaveType>(docRef))!;
+  },
+
+  /**
+   * Update leave type
+   */
+  async updateLeaveType(organizationId: string, typeId: string, updates: Partial<LeaveType>): Promise<void> {
+    await updateDoc(docs.leaveType(organizationId, typeId), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  },
+
+  /**
+   * Delete leave type
+   */
+  async deleteLeaveType(organizationId: string, typeId: string): Promise<void> {
+    await deleteDoc(docs.leaveType(organizationId, typeId));
   },
 
   /**
@@ -226,10 +246,10 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
-    // Update pending days in leave balance
+    // Update pending days in LEAVE ENTITLEMENTS
     try {
       const balanceQuery = query(
-        collections.leaveBalances(organizationId),
+        collections.leaveEntitlements(organizationId),
         where('staffId', '==', input.staffId),
         where('leaveTypeId', '==', input.leaveTypeId),
         where('year', '==', new Date().getFullYear())
@@ -237,14 +257,14 @@ export const leaveService = {
       const balanceSnapshot = await getDocs(balanceQuery);
       if (!balanceSnapshot.empty) {
         const balanceDoc = balanceSnapshot.docs[0];
-        const currentBalance = balanceDoc.data();
+        const currentBalance = balanceDoc.data() as LeaveEntitlement;
         await updateDoc(balanceDoc.ref, {
           pendingDays: (currentBalance.pendingDays || 0) + daysRequested,
           updatedAt: serverTimestamp()
         });
       }
     } catch (balanceError) {
-      console.error('Error updating pending balance:', balanceError);
+      console.error('Error updating pending entitlement:', balanceError);
     }
 
     const request = await this.getRequestById(organizationId, docRef.id);
@@ -277,10 +297,10 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
-    // Update leave balance - increment usedDays, decrement pendingDays
+    // Update LEAVE ENTITLEMENTS - increment usedDays, decrement pendingDays
     try {
       const balanceQuery = query(
-        collections.leaveBalances(organizationId),
+        collections.leaveEntitlements(organizationId),
         where('staffId', '==', request.staffId),
         where('leaveTypeId', '==', request.leaveTypeId),
         where('year', '==', new Date().getFullYear())
@@ -288,7 +308,7 @@ export const leaveService = {
       const balanceSnapshot = await getDocs(balanceQuery);
       if (!balanceSnapshot.empty) {
         const balanceDoc = balanceSnapshot.docs[0];
-        const currentBalance = balanceDoc.data();
+        const currentBalance = balanceDoc.data() as LeaveEntitlement;
         await updateDoc(balanceDoc.ref, {
           usedDays: (currentBalance.usedDays || 0) + request.daysRequested,
           pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
@@ -296,7 +316,7 @@ export const leaveService = {
         });
       }
     } catch (balanceError) {
-      console.error('Error updating leave balance:', balanceError);
+      console.error('Error updating leave entitlement:', balanceError);
     }
 
     // Add audit log
@@ -336,10 +356,10 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
-    // Restore pending balance (decrement pendingDays)
+    // Restore pending balance (decrement pendingDays) in ENTITLEMENTS
     try {
       const balanceQuery = query(
-        collections.leaveBalances(organizationId),
+        collections.leaveEntitlements(organizationId),
         where('staffId', '==', request.staffId),
         where('leaveTypeId', '==', request.leaveTypeId),
         where('year', '==', new Date().getFullYear())
@@ -347,14 +367,14 @@ export const leaveService = {
       const balanceSnapshot = await getDocs(balanceQuery);
       if (!balanceSnapshot.empty) {
         const balanceDoc = balanceSnapshot.docs[0];
-        const currentBalance = balanceDoc.data();
+        const currentBalance = balanceDoc.data() as LeaveEntitlement;
         await updateDoc(balanceDoc.ref, {
           pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
           updatedAt: serverTimestamp()
         });
       }
     } catch (balanceError) {
-      console.error('Error restoring pending balance:', balanceError);
+      console.error('Error restoring pending entitlement:', balanceError);
     }
 
     return { success: true };
@@ -378,10 +398,10 @@ export const leaveService = {
       updatedAt: serverTimestamp()
     });
 
-    // Restore pending balance (decrement pendingDays)
+    // Restore pending balance (decrement pendingDays) in ENTITLEMENTS
     try {
       const balanceQuery = query(
-        collections.leaveBalances(organizationId),
+        collections.leaveEntitlements(organizationId),
         where('staffId', '==', request.staffId),
         where('leaveTypeId', '==', request.leaveTypeId),
         where('year', '==', new Date().getFullYear())
@@ -389,14 +409,14 @@ export const leaveService = {
       const balanceSnapshot = await getDocs(balanceQuery);
       if (!balanceSnapshot.empty) {
         const balanceDoc = balanceSnapshot.docs[0];
-        const currentBalance = balanceDoc.data();
+        const currentBalance = balanceDoc.data() as LeaveEntitlement;
         await updateDoc(balanceDoc.ref, {
           pendingDays: Math.max(0, (currentBalance.pendingDays || 0) - request.daysRequested),
           updatedAt: serverTimestamp()
         });
       }
     } catch (balanceError) {
-      console.error('Error restoring pending balance:', balanceError);
+      console.error('Error restoring pending entitlement:', balanceError);
     }
 
     return { success: true };
@@ -428,22 +448,31 @@ export const leaveService = {
     return this.getLeaveRequests(organizationId, { staffId: userId });
   },
 
-  // ==================== LEAVE BALANCES ====================
+  // ==================== LEAVE BALANCES (via Entitlements) ====================
 
   /**
    * Get leave balances for a staff member with computed properties
+   * NOW READS FROM LEAVE ENTITLEMENTS
    */
   async getStaffBalances(organizationId: string, staffId: string, year?: number): Promise<(LeaveBalance & { remaining: number; allocated: number; used: number })[]> {
     const currentYear = year || new Date().getFullYear();
 
     const q = query(
-      collections.leaveBalances(organizationId),
+      collections.leaveEntitlements(organizationId),
       where('staffId', '==', staffId),
       where('year', '==', currentYear)
     );
 
     const snapshot = await getDocs(q);
-    const balances = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LeaveBalance));
+    const balances = snapshot.docs.map(doc => {
+      const data = doc.data() as LeaveEntitlement;
+      // Map Entitlement fields to Balance fields for compatibility
+      return {
+        id: doc.id,
+        ...data,
+        totalDays: data.allocatedDays || 0 // Map allocatedDays to totalDays
+      } as any as LeaveBalance;
+    });
 
     // Fetch leave type details and compute remaining days
     const leaveTypes = await this.getLeaveTypes(organizationId);
@@ -451,6 +480,8 @@ export const leaveService = {
       const allocated = balance.totalDays || 0;
       const used = balance.usedDays || 0;
       const pending = balance.pendingDays || 0;
+      // Note: Entitlements might have carryForwardDays, implicitly added to allocated or separate?
+      // For now, simple remaining calc.
       const remaining = Math.max(0, allocated - used - pending);
       return {
         ...balance,
@@ -464,15 +495,16 @@ export const leaveService = {
 
   /**
    * Initialize leave balances for new staff
+   * UPDATED: Uses leaveEntitlements collection
    */
   async initializeStaffBalances(organizationId: string, staffId: string): Promise<void> {
     const leaveTypes = await this.getLeaveTypes(organizationId);
     const currentYear = new Date().getFullYear();
 
     for (const type of leaveTypes) {
-      // Check if balance already exists
+      // Check if entitlement already exists
       const q = query(
-        collections.leaveBalances(organizationId),
+        collections.leaveEntitlements(organizationId),
         where('staffId', '==', staffId),
         where('leaveTypeId', '==', type.id),
         where('year', '==', currentYear)
@@ -480,13 +512,17 @@ export const leaveService = {
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        await addDoc(collections.leaveBalances(organizationId), {
+        await addDoc(collections.leaveEntitlements(organizationId), {
+          organizationId,
           staffId,
           leaveTypeId: type.id,
           year: currentYear,
-          totalDays: type.daysAllowed,
+          allocatedDays: type.daysAllowed,
           usedDays: 0,
           pendingDays: 0,
+          carriedForwardDays: 0,
+          isActive: true,
+          isOverridden: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });

@@ -9,6 +9,7 @@ import BillingManager from '../components/admin/BillingManager';
 import AuditLogManager from '../components/admin/AuditLogManager';
 import SettingsManager from '../components/admin/SettingsManager';
 import StatutoryRulesManager from '../components/admin/StatutoryRulesManager';
+import { PrivacyMask, PrivacyToggle } from '../components/common/PrivacyControl';
 
 // Types
 interface Organization {
@@ -92,7 +93,7 @@ const SuperAdminDashboard: React.FC = () => {
     const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [showRevenue, setShowRevenue] = useState(true);
+    const [showRevenue, setShowRevenue] = useState(false);
 
     // Billing config state
     const [billingConfig, setBillingConfig] = useState({
@@ -233,7 +234,7 @@ const SuperAdminDashboard: React.FC = () => {
     const tabs = [
         { id: 'overview', label: '📊 Overview', badge: 0 },
         { id: 'approvals', label: '✅ Approvals', badge: stats.pendingOnboarding },
-        { id: 'organizations', label: '🏢 Organizations', badge: 0 },
+        { id: 'organizations', label: '🏢 Organization Details', badge: 0 },
         { id: 'billing', label: '💳 Billing', badge: 0 },
         { id: 'statutory', label: '📜 Statutory Rules', badge: 0 },
         { id: 'audit', label: '📋 Audit Log', badge: 0 },
@@ -485,13 +486,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-bold text-slate-800">Revenue This Month</h3>
-                                <button
-                                    onClick={() => setShowRevenue(!showRevenue)}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-600 transition-colors"
-                                >
-                                    <span>{showRevenue ? '👁️' : '🙈'}</span>
-                                    {showRevenue ? 'Hide' : 'Show'}
-                                </button>
+                                <PrivacyToggle isVisible={showRevenue} onToggle={() => setShowRevenue(!showRevenue)} label={showRevenue ? 'Hide' : 'Show'} />
                             </div>
                             <button
                                 onClick={() => setActiveTab('billing')}
@@ -501,10 +496,16 @@ const SuperAdminDashboard: React.FC = () => {
                                 <div className="relative z-10">
                                     <div className="text-sm font-medium text-slate-400 mb-2">Revenue This Month</div>
                                     <div className="text-4xl font-bold mb-2">
-                                        {showRevenue ? `KES ${stats.totalRevenue.toLocaleString()}` : '••••••'}
+                                        <PrivacyMask isVisible={showRevenue} className="text-white">
+                                            KES {stats.totalRevenue.toLocaleString()}
+                                        </PrivacyMask>
                                     </div>
                                     <div className="text-sm text-emerald-400 font-medium">
-                                        {showRevenue ? `${stats.monthlyGrowth} from last month` : '•••••'}
+                                        <div className="flex items-center gap-1">
+                                            <PrivacyMask isVisible={showRevenue}>
+                                                {stats.monthlyGrowth} from last month
+                                            </PrivacyMask>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="absolute right-6 top-1/2 -translate-y-1/2">

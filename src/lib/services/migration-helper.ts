@@ -40,7 +40,7 @@ export async function fixMissingOrganizationIds(organizationId: string): Promise
                 // Check if there's a linked invitation for this email
                 const invitationsRef = collection(db, 'staffInvitations');
                 const inviteQuery = query(
-                    invitations Ref,
+                    invitationsRef,
                     where('email', '==', data.email),
                     where('organizationId', '==', organizationId),
                     where('status', '==', 'accepted')

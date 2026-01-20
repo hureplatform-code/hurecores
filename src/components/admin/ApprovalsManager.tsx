@@ -346,7 +346,7 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
             }
 
             // Update location
-            await updateDoc(doc(db, 'locations', facility.id), {
+            await updateDoc(doc(db, 'organizations', facility.organizationId, 'locations', facility.id), {
                 verificationStatus: 'Approved'
             });
 
@@ -388,7 +388,7 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                 });
             }
 
-            await updateDoc(doc(db, 'locations', facility.id), {
+            await updateDoc(doc(db, 'organizations', facility.organizationId, 'locations', facility.id), {
                 verificationStatus: 'Active',
                 isActive: true
             });

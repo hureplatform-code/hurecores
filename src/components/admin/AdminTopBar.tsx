@@ -1,5 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateKE } from '../../lib/utils/dateFormat';
 
 interface AdminTopBarProps {
     toggleSidebar: () => void;
@@ -7,20 +9,18 @@ interface AdminTopBarProps {
 
 const AdminTopBar: React.FC<AdminTopBarProps> = ({ toggleSidebar }) => {
     const { logout, user } = useAuth();
-    const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     return (
-        <header className="h-20 bg-white border-b border-slate-200 sticky top-0 z-20 px-4 lg:px-8 flex items-center justify-between shadow-sm">
+        <header className="bg-white border-b border-slate-200 h-16 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30">
             <div className="flex items-center gap-4">
                 <button
                     onClick={toggleSidebar}
-                    className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    className="p-2 -ml-2 text-slate-500 hover:bg-slate-50 rounded-lg lg:hidden"
                 >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <span className="text-xl">☰</span>
                 </button>
-                <div className="hidden md:block">
-                    <h1 className="text-xl font-bold text-slate-800">Admin Dashboard</h1>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{currentDate}</p>
+                <div className="text-sm text-slate-500 hidden md:block">
+                    {formatDateKE(new Date())}
                 </div>
             </div>
 

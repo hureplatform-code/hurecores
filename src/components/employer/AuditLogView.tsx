@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { auditService } from '../../lib/services';
+import DateInput from '../common/DateInput';
 
 interface AuditLogEntry {
     id: string;
@@ -128,21 +129,17 @@ const AuditLogView: React.FC = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">From Date</label>
-                        <input
-                            type="date"
+                        <DateInput
+                            label="From Date"
                             value={filter.startDate}
-                            onChange={e => setFilter(p => ({ ...p, startDate: e.target.value }))}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            onChange={(value) => setFilter(p => ({ ...p, startDate: value }))}
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">To Date</label>
-                        <input
-                            type="date"
+                        <DateInput
+                            label="To Date"
                             value={filter.endDate}
-                            onChange={e => setFilter(p => ({ ...p, endDate: e.target.value }))}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            onChange={(value) => setFilter(p => ({ ...p, endDate: value }))}
                         />
                     </div>
                     <div className="flex items-end">

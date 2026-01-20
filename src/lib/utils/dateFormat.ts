@@ -72,6 +72,41 @@ export function formatDateTimeKE(date: Date | string | number | undefined | null
 }
 
 /**
+ * Format time to Kenya format (HH:mm)
+ * @param date - Date object, ISO string, or timestamp
+ * @returns Formatted time string (e.g., "14:30")
+ */
+export function formatTimeKE(date: Date | string | number | undefined | null): string {
+    if (!date) return '-';
+
+    // If it's already a time string like "14:30" or "09:00", return it
+    if (typeof date === 'string' && /^\d{1,2}:\d{2}$/.test(date)) {
+        return date;
+    }
+
+    // If it's a time string with seconds like "14:30:00", return subset
+    if (typeof date === 'string' && /^\d{1,2}:\d{2}:\d{2}$/.test(date)) {
+        return date.substring(0, 5);
+    }
+
+    try {
+        const dateObj = typeof date === 'string' || typeof date === 'number'
+            ? new Date(date)
+            : date;
+
+        if (isNaN(dateObj.getTime())) return '-';
+
+        return dateObj.toLocaleTimeString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    } catch {
+        return '-';
+    }
+}
+
+/**
  * Format date with day name for displays (e.g., "Sat, 18/01/2026")
  * @param date - Date object, ISO string, or timestamp
  * @returns Formatted date with weekday
@@ -241,6 +276,25 @@ export function getNowKE(): Date {
     return new Date(); // Date object is always UTC, formatting handles timezone
 }
 
+/**
+ * Get the Monday of the current week in Kenya timezone
+ * If today is Sunday, it returns the Monday of the *current* week (6 days ago), not next Monday
+ * @returns Date object for Monday of the current week
+ */
+export function getMondayOfWeekKE(): Date {
+    const now = new Date();
+    // Use format parts to get reliable Day of Week in target timezone
+    // In Kenya (UTC+3), if it's 1am Monday local (Sunday UTC), we need it to be Monday.
+
+    // Simplification: We already use getTodayDateKE() which returns YYYY-MM-DD string in Kenya time
+    const todayStr = getTodayDateKE();
+    const today = new Date(todayStr + 'T12:00:00'); // Midday to avoid edge cases
+
+    const day = today.getDay(); // 0 (Sun) to 6 (Sat)
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(today.setDate(diff));
+}
+
 export default {
     formatDateKE,
     formatDateTimeKE,
@@ -251,5 +305,6 @@ export default {
     formatMonthYearKE,
     getTodayDateKE,
     getDateStringKE,
-    getNowKE
+    getNowKE,
+    getMondayOfWeekKE
 };

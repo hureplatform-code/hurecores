@@ -254,6 +254,12 @@ service cloud.firestore {
         allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
 
+      // Custom Roles (Permission Templates)
+      match /customRoles/{roleId} {
+        allow read: if isOrgStaff(orgId) || isSuperAdmin();
+        allow write: if isOrgAdmin(orgId) || isSuperAdmin();
+      }
+
       // Organization Audit Logs
       match /auditLogs/{logId} {
         allow read: if isAuthenticated(); // Allow any auth user to read (temporary fix for unblocking)

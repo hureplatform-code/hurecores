@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { payrollService, staffService, scheduleService } from '../../lib/services';
 import type { PayrollPeriod, PayrollEntry, Profile } from '../../types';
+import { formatDateTimeKE, formatDateKE, formatTimeKE } from '../../lib/utils/dateFormat';
+import DateInput from '../common/DateInput';
+import { PrivacyMask, PrivacyToggle } from '../common/PrivacyControl';
 
 // Extended PayrollEntry with additional UI fields for the spec
 interface ExtendedPayrollEntry extends PayrollEntry {
@@ -554,7 +557,7 @@ const PayrollView: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="text-xs text-slate-400">
-                                    Auto-saved: {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}, {new Date().toLocaleTimeString()}
+                                    Auto-saved: {formatDateTimeKE(new Date())}
                                 </div>
                             </div>
 
@@ -696,19 +699,27 @@ const PayrollView: React.FC = () => {
                                                                 {(entry.workedUnits + entry.paidLeaveUnits) || 0} / {entry.monthUnits || 30}
                                                             </td>
                                                             <td className="px-4 py-4 text-right text-slate-600">
-                                                                {showSalaries ? ((entry.staff?.monthlySalaryCents || 0) / 100).toLocaleString() : '•••'}
+                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                    {((entry.staff?.monthlySalaryCents || 0) / 100).toLocaleString()}
+                                                                </PrivacyMask>
                                                             </td>
                                                             <td className="px-4 py-4 text-center">
                                                                 {getPayMethodBadge(entry.payMethod)}
                                                             </td>
                                                             <td className="px-4 py-4 text-right text-slate-600">
-                                                                {showSalaries ? ((entry.payableBaseCents) / 100).toLocaleString() : '•••'}
+                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                    {((entry.payableBaseCents) / 100).toLocaleString()}
+                                                                </PrivacyMask>
                                                             </td>
                                                             <td className="px-4 py-4 text-right text-slate-600">
-                                                                {showSalaries ? ((entry.allowancesTotalCents || 0) / 100).toLocaleString() : '•••'}
+                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                    {((entry.allowancesTotalCents || 0) / 100).toLocaleString()}
+                                                                </PrivacyMask>
                                                             </td>
                                                             <td className="px-4 py-4 text-right font-bold text-slate-900">
-                                                                {showSalaries ? (((entry.payableBaseCents || 0) + (entry.allowancesTotalCents || 0)) / 100).toLocaleString() : '•••'}
+                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                    {(((entry.payableBaseCents || 0) + (entry.allowancesTotalCents || 0)) / 100).toLocaleString()}
+                                                                </PrivacyMask>
                                                             </td>
                                                             <td className="px-4 py-4 text-center">
                                                                 {selectedPeriod.isFinalized ? (
@@ -779,7 +790,11 @@ const PayrollView: React.FC = () => {
                                                                             <div className="space-y-2 text-sm">
                                                                                 <div className="flex justify-between">
                                                                                     <span className="text-slate-600">Monthly Salary:</span>
-                                                                                    <span className="font-medium">{formatCurrency(entry.staff?.monthlySalaryCents || 0)}</span>
+                                                                                    <span className="font-medium">
+                                                                                        <PrivacyMask isVisible={showSalaries}>
+                                                                                            {formatCurrency(entry.staff?.monthlySalaryCents || 0)}
+                                                                                        </PrivacyMask>
+                                                                                    </span>
                                                                                 </div>
                                                                                 <div className="flex justify-between">
                                                                                     <span className="text-slate-600">Pay Method:</span>
@@ -793,9 +808,13 @@ const PayrollView: React.FC = () => {
                                                                                         ) : (
                                                                                             <div className="text-sm">
                                                                                                 Payable Base = Monthly Salary × (Paid Units / Month Units)<br />
-                                                                                                = {formatCurrency(entry.staff?.monthlySalaryCents || 0)} × ({entry.workedUnits + entry.paidLeaveUnits} / {entry.monthUnits}) = {formatCurrency(entry.payableBaseCents)}
+                                                                                                Payable Base = Monthly Salary × (Paid Units / Month Units)<br />
+                                                                                                = <PrivacyMask isVisible={showSalaries}>{formatCurrency(entry.staff?.monthlySalaryCents || 0)}</PrivacyMask> × ({entry.workedUnits + entry.paidLeaveUnits} / {entry.monthUnits}) = <PrivacyMask isVisible={showSalaries}>{formatCurrency(entry.payableBaseCents)}</PrivacyMask>
                                                                                             </div>
                                                                                         )}
+                                                                                        <div className="mt-2 text-xs text-slate-500 border-t border-slate-200 pt-1">
+                                                                                            Configured as: Taxable Pay = Basic Salary + Cash Allowances
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -827,7 +846,11 @@ const PayrollView: React.FC = () => {
                                                                                 <tbody>
                                                                                     {(entry.allowanceDetails || []).map((allowance, idx) => (
                                                                                         <tr key={idx}>
-                                                                                            <td className="py-1">{(allowance.amount / 100).toLocaleString()}</td>
+                                                                                            <td className="py-1">
+                                                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                                                    {(allowance.amount / 100).toLocaleString()}
+                                                                                                </PrivacyMask>
+                                                                                            </td>
                                                                                             <td className="py-1 text-slate-600">{allowance.notes}</td>
                                                                                             <td className="py-1 text-right">
                                                                                                 {!selectedPeriod.isFinalized && (
@@ -858,12 +881,58 @@ const PayrollView: React.FC = () => {
                                                                             <div className="border-t pt-2 space-y-1 text-sm">
                                                                                 <div className="flex justify-between">
                                                                                     <span className="text-slate-600">Allowances:</span>
-                                                                                    <span className="font-medium">{((entry.allowancesTotalCents) / 100).toLocaleString()}</span>
+                                                                                    <span className="font-medium">
+                                                                                        <PrivacyMask isVisible={showSalaries}>
+                                                                                            {((entry.allowancesTotalCents) / 100).toLocaleString()}
+                                                                                        </PrivacyMask>
+                                                                                    </span>
                                                                                 </div>
                                                                                 <div className="flex justify-between">
                                                                                     <span className="text-slate-600">Total Gross:</span>
-                                                                                    <span className="font-bold">{(((entry.payableBaseCents || 0) + (entry.allowancesTotalCents || 0)) / 100).toLocaleString()}</span>
+                                                                                    <span className="font-bold">
+                                                                                        <PrivacyMask isVisible={showSalaries}>
+                                                                                            {(((entry.payableBaseCents || 0) + (entry.allowancesTotalCents || 0)) / 100).toLocaleString()}
+                                                                                        </PrivacyMask>
+                                                                                    </span>
                                                                                 </div>
+
+                                                                                {/* Statutory Deductions Breakdown */}
+                                                                                {entry.deductionDetails && (
+                                                                                    <div className="border-t border-slate-100 pt-2 space-y-1">
+                                                                                        <div className="text-xs font-semibold text-slate-700 mb-1">Deductions (KRA)</div>
+                                                                                        <div className="flex justify-between text-xs">
+                                                                                            <span className="text-slate-500">PAYE:</span>
+                                                                                            <PrivacyMask isVisible={showSalaries} className="text-red-500">
+                                                                                                -{(entry.deductionDetails.paye / 100).toLocaleString()}
+                                                                                            </PrivacyMask>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between text-xs">
+                                                                                            <span className="text-slate-500">SHIF (2.75%):</span>
+                                                                                            <PrivacyMask isVisible={showSalaries} className="text-red-500">
+                                                                                                -{(entry.deductionDetails.shif / 100).toLocaleString()}
+                                                                                            </PrivacyMask>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between text-xs">
+                                                                                            <span className="text-slate-500">NSSF (Tier I+II):</span>
+                                                                                            <PrivacyMask isVisible={showSalaries} className="text-red-500">
+                                                                                                -{(entry.deductionDetails.nssf / 100).toLocaleString()}
+                                                                                            </PrivacyMask>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between text-xs">
+                                                                                            <span className="text-slate-500">Housing Levy (1.5%):</span>
+                                                                                            <PrivacyMask isVisible={showSalaries} className="text-red-500">
+                                                                                                -{(entry.deductionDetails.housingLevy / 100).toLocaleString()}
+                                                                                            </PrivacyMask>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between font-medium pt-1 border-t border-slate-100">
+                                                                                            <span className="text-slate-700">Total Deductions:</span>
+                                                                                            <PrivacyMask isVisible={showSalaries} className="text-red-600">
+                                                                                                -{(entry.deductionDetails.total / 100).toLocaleString()}
+                                                                                            </PrivacyMask>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+
                                                                                 <div className="flex justify-between text-slate-500 pt-2 border-t mt-2">
                                                                                     <span>Paid Status:</span>
                                                                                     <span className={entry.isPaid ? 'text-emerald-600 font-medium' : 'text-slate-400'}>
@@ -874,7 +943,7 @@ const PayrollView: React.FC = () => {
                                                                                     <>
                                                                                         <div className="flex justify-between text-slate-500">
                                                                                             <span>📅 Paid On:</span>
-                                                                                            <span>{entry.paidAt ? new Date(entry.paidAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + new Date(entry.paidAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                                                                                            <span>{entry.paidAt ? `${formatDateKE(entry.paidAt)} at ${formatTimeKE(entry.paidAt)}` : '—'}</span>
                                                                                         </div>
                                                                                         <div className="flex justify-between text-slate-500">
                                                                                             <span>👤 Marked By:</span>
@@ -953,7 +1022,9 @@ const PayrollView: React.FC = () => {
                                                     <td className="px-6 py-4 text-slate-600">{locum.role}</td>
                                                     <td className="px-6 py-4 text-slate-600">{locum.location}</td>
                                                     <td className="px-6 py-4 text-right text-slate-600">
-                                                        {(locum.rateCents / 100).toLocaleString()}
+                                                        <PrivacyMask isVisible={showSalaries}>
+                                                            {(locum.rateCents / 100).toLocaleString()}
+                                                        </PrivacyMask>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         {locum.status === 'Worked' ? (
@@ -966,7 +1037,11 @@ const PayrollView: React.FC = () => {
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-bold">
                                                         {locum.status === 'Worked'
-                                                            ? formatCurrency(locum.rateCents)
+                                                            ? (
+                                                                <PrivacyMask isVisible={showSalaries}>
+                                                                    {formatCurrency(locum.rateCents)}
+                                                                </PrivacyMask>
+                                                            )
                                                             : <span className="text-slate-400">—</span>
                                                         }
                                                     </td>
@@ -980,11 +1055,13 @@ const PayrollView: React.FC = () => {
                                                         Total Payable (Worked only):
                                                     </td>
                                                     <td className="px-6 py-4 text-right font-bold text-emerald-600">
-                                                        {formatCurrency(
-                                                            locumPayouts
-                                                                .filter(l => l.status === 'Worked')
-                                                                .reduce((sum, l) => sum + l.rateCents, 0)
-                                                        )}
+                                                        <PrivacyMask isVisible={showSalaries}>
+                                                            {formatCurrency(
+                                                                locumPayouts
+                                                                    .filter(l => l.status === 'Worked')
+                                                                    .reduce((sum, l) => sum + l.rateCents, 0)
+                                                            )}
+                                                        </PrivacyMask>
                                                     </td>
                                                 </tr>
                                             </tfoot>
@@ -1035,23 +1112,19 @@ const PayrollView: React.FC = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date *</label>
-                                    <input
-                                        type="date"
+                                    <DateInput
+                                        label="Start Date"
                                         required
                                         value={newPeriod.startDate}
-                                        onChange={(e) => setNewPeriod(prev => ({ ...prev, startDate: e.target.value }))}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                                        onChange={(value) => setNewPeriod(prev => ({ ...prev, startDate: value }))}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">End Date *</label>
-                                    <input
-                                        type="date"
+                                    <DateInput
+                                        label="End Date"
                                         required
                                         value={newPeriod.endDate}
-                                        onChange={(e) => setNewPeriod(prev => ({ ...prev, endDate: e.target.value }))}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl"
+                                        onChange={(value) => setNewPeriod(prev => ({ ...prev, endDate: value }))}
                                     />
                                 </div>
                             </div>

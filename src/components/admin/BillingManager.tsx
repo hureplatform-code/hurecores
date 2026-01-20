@@ -22,6 +22,7 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { PrivacyMask, PrivacyToggle } from '../common/PrivacyControl';
 
 // =====================================================
 // INTERFACES
@@ -444,13 +445,7 @@ const BillingManager: React.FC = () => {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-bold text-slate-800">Billing Metrics</h3>
-                            <button
-                                onClick={() => setShowFinancials(!showFinancials)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-600 transition-colors"
-                            >
-                                <span>{showFinancials ? '🙈' : '👁️'}</span>
-                                {showFinancials ? 'Hide Values' : 'Show Values'}
-                            </button>
+                            <PrivacyToggle isVisible={showFinancials} onToggle={() => setShowFinancials(!showFinancials)} label={showFinancials ? 'Hide Values' : 'Show Values'} />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Total MRR */}
@@ -460,7 +455,9 @@ const BillingManager: React.FC = () => {
                             >
                                 <div className="text-sm font-medium text-slate-500 mb-2">Total MRR</div>
                                 <div className="text-4xl font-bold text-blue-600">
-                                    {showFinancials ? formatCurrency(metrics.totalMRR) : '••••••'}
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        {formatCurrency(metrics.totalMRR)}
+                                    </PrivacyMask>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-2">Monthly recurring revenue</div>
                                 <div className="text-xs font-semibold text-blue-600 mt-3 group-hover:underline">View more →</div>
@@ -473,7 +470,9 @@ const BillingManager: React.FC = () => {
                             >
                                 <div className="text-sm font-medium text-slate-500 mb-2">Revenue This Month</div>
                                 <div className="text-4xl font-bold text-emerald-600">
-                                    {showFinancials ? formatCurrency(metrics.revenueThisMonth) : '••••••'}
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        {formatCurrency(metrics.revenueThisMonth)}
+                                    </PrivacyMask>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-2">Total revenue collected this month</div>
                                 <div className="text-xs font-semibold text-emerald-600 mt-3 group-hover:underline">View more →</div>
@@ -486,13 +485,17 @@ const BillingManager: React.FC = () => {
                             >
                                 <div className="text-sm font-medium text-slate-500 mb-2">Suspended (Unpaid)</div>
                                 <div className="text-4xl font-bold text-red-600">
-                                    {showFinancials ? formatCurrency(metrics.suspendedAmount) : '••••••'}
+                                    <PrivacyMask isVisible={showFinancials}>
+                                        {formatCurrency(metrics.suspendedAmount)}
+                                    </PrivacyMask>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-2">Restricted due to non-payment</div>
                                 <div className="flex justify-between items-center mt-3">
                                     <span className="text-xs font-semibold text-red-600 group-hover:underline">View more →</span>
                                     <span className="text-xs font-bold text-red-600">
-                                        {showFinancials ? formatCurrency(metrics.suspendedAmount) : '••••••'}
+                                        <PrivacyMask isVisible={showFinancials}>
+                                            {formatCurrency(metrics.suspendedAmount)}
+                                        </PrivacyMask>
                                     </span>
                                 </div>
                             </button>
@@ -518,7 +521,11 @@ const BillingManager: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-center mt-1 text-sm">
                                     <span className="text-slate-500">MRR</span>
-                                    <span className="font-semibold text-slate-700">{formatCurrency(metrics.plans.essential.mrr)}</span>
+                                    <span className="font-semibold text-slate-700">
+                                        <PrivacyMask isVisible={showFinancials}>
+                                            {formatCurrency(metrics.plans.essential.mrr)}
+                                        </PrivacyMask>
+                                    </span>
                                 </div>
                                 <div className="text-xs font-semibold text-blue-600 mt-4 group-hover:underline">View Subscriptions →</div>
                             </button>
@@ -538,7 +545,11 @@ const BillingManager: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-center mt-1 text-sm">
                                     <span className="text-slate-500">MRR</span>
-                                    <span className="font-semibold text-slate-700">{formatCurrency(metrics.plans.professional.mrr)}</span>
+                                    <span className="font-semibold text-slate-700">
+                                        <PrivacyMask isVisible={showFinancials}>
+                                            {formatCurrency(metrics.plans.professional.mrr)}
+                                        </PrivacyMask>
+                                    </span>
                                 </div>
                                 <div className="text-xs font-semibold text-blue-600 mt-4 group-hover:underline">View Subscriptions →</div>
                             </button>
@@ -558,7 +569,11 @@ const BillingManager: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-center mt-1 text-sm">
                                     <span className="text-slate-500">MRR</span>
-                                    <span className="font-semibold text-slate-700">{formatCurrency(metrics.plans.enterprise.mrr)}</span>
+                                    <span className="font-semibold text-slate-700">
+                                        <PrivacyMask isVisible={showFinancials}>
+                                            {formatCurrency(metrics.plans.enterprise.mrr)}
+                                        </PrivacyMask>
+                                    </span>
                                 </div>
                                 <div className="text-xs font-semibold text-blue-600 mt-4 group-hover:underline">View Subscriptions →</div>
                             </button>

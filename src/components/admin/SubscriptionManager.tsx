@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../lib/services/organization.service';
+import { adminService } from '../../lib/services';
 import type { Organization } from '../../types';
 import { PLANS } from '../../constants';
 
@@ -99,7 +99,7 @@ const SubscriptionManager: React.FC = () => {
                                     <td className="px-6 py-4 font-mono text-slate-600">KES {getPlanAmount(org.plan).toLocaleString()}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold border ${org.accountStatus === 'Active' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                org.accountStatus === 'Suspended' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
+                                            org.accountStatus === 'Suspended' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
                                             }`}>
                                             {org.accountStatus || 'Pending'}
                                         </span>

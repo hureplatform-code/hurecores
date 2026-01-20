@@ -68,8 +68,8 @@ const ManagerDashboard: React.FC = () => {
             // Load pending leave count
             let pendingLeave = 0;
             try {
-                const leaveRequests = await leaveService.getByOrganization(user.organizationId);
-                pendingLeave = leaveRequests.filter(r => r.status === 'Pending').length;
+                const leaveRequests = await leaveService.getPendingRequests(user.organizationId);
+                pendingLeave = leaveRequests.length;
             } catch (err) {
                 console.error('Error loading leave:', err);
             }
@@ -241,8 +241,8 @@ const ManagerDashboard: React.FC = () => {
                                             </div>
                                         </div>
                                         <span className={`px-2 py-1 text-xs font-bold rounded-full ${member.staffStatus === 'Active'
-                                                ? 'bg-emerald-100 text-emerald-700'
-                                                : 'bg-slate-100 text-slate-600'
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-slate-100 text-slate-600'
                                             }`}>
                                             {member.staffStatus || 'Active'}
                                         </span>
