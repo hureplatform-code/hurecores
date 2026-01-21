@@ -1071,20 +1071,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                         >
                                                             SMS
                                                         </a>
-                                                        <a
-                                                            href={`https://wa.me/${member.phone.replace(/[^0-9]/g, '')}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-3 py-1 bg-green-50 text-green-600 rounded text-xs font-bold hover:bg-green-100 transition"
-                                                            title="Send WhatsApp"
-                                                        >
-                                                            WA
-                                                        </a>
+
                                                     </>
                                                 ) : (
                                                     <>
                                                         <button disabled className="px-3 py-1 bg-slate-50 text-slate-400 rounded text-xs font-bold cursor-not-allowed">SMS</button>
-                                                        <button disabled className="px-3 py-1 bg-slate-50 text-slate-400 rounded text-xs font-bold cursor-not-allowed">WA</button>
+
                                                     </>
                                                 )}
                                                 {member.staffStatus === 'Inactive' ? (
@@ -1143,8 +1135,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                 {
                     (showAddModal || showEditModal) && (
                         <div ref={modalRef} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 my-8">
-                                <div className="sticky top-0 bg-white z-10 flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6 my-4 md:my-8">
+                                <div className="sticky top-0 bg-white z-10 flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
                                     <h2 className="text-xl font-bold text-slate-900">
                                         {showEditModal ? 'Edit Staff Member' : (inviteLink ? 'Invitation Sent!' : 'Add Staff Member')}
                                     </h2>
@@ -1204,10 +1196,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                             </div>
                                         )}
 
-                                        <form onSubmit={showEditModal ? handleUpdateStaff : handleAddStaff} className="space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                        <form onSubmit={showEditModal ? handleUpdateStaff : handleAddStaff} className="space-y-3">
+                                            <div className="grid grid-cols-2 md:grid-cols-2 gap-x-4 gap-y-3">
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name *</label>
+                                                    <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1">First Name *</label>
                                                     <input
                                                         type="text"
                                                         required
@@ -1217,7 +1209,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Last Name *</label>
+                                                    <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1">Last Name *</label>
                                                     <input
                                                         type="text"
                                                         required
@@ -1228,7 +1220,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email *</label>
+                                                    <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1">Email *</label>
                                                     <input
                                                         type="email"
                                                         required
@@ -1328,13 +1320,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                 </div>
                                             </div>
 
-                                            {/* License Credentials Section */}
-                                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-4">
-                                                <h3 className="text-sm font-bold text-blue-900 mb-1">Professional Credentials</h3>
-                                                <p className="text-xs text-slate-500 mb-3">
-                                                    License credentials can be updated later in the staff profile.
-                                                </p>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                                            {/* License Credentials Section - Collapsible */}
+                                            <details className="bg-blue-50 border border-blue-200 rounded-xl mt-3">
+                                                <summary className="p-3 cursor-pointer text-sm font-bold text-blue-900 flex justify-between items-center">
+                                                    Professional Credentials
+                                                    <span className="text-xs font-normal text-slate-500">Tap to expand</span>
+                                                </summary>
+                                                <div className="p-3 pt-0">
                                                     <div>
                                                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">License Type</label>
                                                         <select
@@ -1398,7 +1390,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                         <p className="text-xs text-slate-400 mt-1">Upload PDF, Image, or Document (Max 5MB)</p>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </details>
 
                                             {/* Compensation fields based on employment type */}
                                             <div className="flex justify-between items-center mt-4 mb-2">
@@ -1461,7 +1453,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                             )}
 
 
-                                            <div className="flex space-x-3 mt-6">
+                                            <div className="flex space-x-3 mt-4 pt-3 border-t border-slate-100">
                                                 <button
                                                     type="button"
                                                     onClick={() => { setShowAddModal(false); resetForm(); }}
@@ -1484,340 +1476,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                     )
                 }
 
-                {/* Edit Staff Modal */}
-                {
-                    showEditModal && selectedStaff && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-                            <div className="bg-white rounded-2xl w-full max-w-4xl p-6 m-4 my-8 max-h-[90vh] overflow-y-auto">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-xl font-bold text-slate-900">Edit Staff Member</h2>
-                                    <button onClick={() => { setShowEditModal(false); setSelectedStaff(null); resetForm(); }} className="text-slate-400 hover:text-slate-600">✕</button>
-                                </div>
-
-                                {error && (
-                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
-                                        {error}
-                                    </div>
-                                )}
-
-                                <form onSubmit={handleUpdateStaff} className="space-y-4">
-                                    {/* Similar form fields as Add Modal */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">First Name</label>
-                                            <input
-                                                type="text"
-                                                value={formData.firstName}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Last Name</label>
-                                            <input
-                                                type="text"
-                                                value={formData.lastName}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <KenyaPhoneInput
-                                                label="Phone Number"
-                                                value={formData.phone || ''}
-                                                onChange={(normalized, isValid) => {
-                                                    setFormData(prev => ({ ...prev, phone: normalized }));
-                                                    setPhoneValid(isValid);
-                                                }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Job Title *</label>
-                                            <select
-                                                value={isCustomJobTitle ? 'Other (custom)' : (JOB_TITLES.includes(formData.jobTitle as any) ? formData.jobTitle : '')}
-                                                onChange={(e) => {
-                                                    if (e.target.value === 'Other (custom)') {
-                                                        setIsCustomJobTitle(true);
-                                                        setFormData(prev => ({ ...prev, jobTitle: '' }));
-                                                    } else {
-                                                        setIsCustomJobTitle(false);
-                                                        setFormData(prev => ({ ...prev, jobTitle: e.target.value }));
-                                                    }
-                                                }}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                required={!isCustomJobTitle}
-                                            >
-                                                <option value="">Select Job Title</option>
-                                                {JOB_TITLES.map(title => (
-                                                    <option key={title} value={title}>{title}</option>
-                                                ))}
-                                            </select>
-                                            {isCustomJobTitle && (
-                                                <input
-                                                    type="text"
-                                                    value={formData.jobTitle}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 mt-2 text-sm"
-                                                    placeholder="Enter custom job title"
-                                                    required
-                                                />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">System Role *</label>
-                                            <select
-                                                value={formData.systemRole}
-                                                onChange={(e) => handleSystemRoleChange(e.target.value as SystemRole)}
-                                                disabled={selectedStaff.systemRole === 'OWNER'}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 text-sm"
-                                            >
-                                                {selectedStaff.systemRole === 'OWNER' && <option value="OWNER">Owner</option>}
-                                                <option value="EMPLOYEE">Employee</option>
-                                                <option value="ADMIN">Admin</option>
-                                            </select>
-                                            <p className="text-xs text-[#94A3B8] mt-1">
-                                                Only Admins consume admin seats.
-                                            </p>
-                                            {formData.systemRole === 'ADMIN' && formData.permissions && (
-                                                <p className="text-xs text-green-600 mt-1">✓ Permissions assigned</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Employment Type *</label>
-                                            <select
-                                                value={formData.employmentType}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, employmentType: e.target.value as EmploymentType }))}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                            >
-                                                <option value="Full-Time">Full-Time</option>
-                                                <option value="Part-Time">Part-Time</option>
-                                                <option value="Contract">Contract</option>
-                                                <option value="Locum">Locum</option>
-                                                <option value="External">External</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Location</label>
-                                            <select
-                                                value={formData.locationId}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, locationId: e.target.value }))}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                            >
-                                                <option value="">Select Location</option>
-                                                {locations.map(loc => (
-                                                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* License Credentials Section - Added to Edit Modal */}
-                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-4">
-                                        <h3 className="text-sm font-bold text-blue-900 mb-1">Professional Credentials</h3>
-                                        <p className="text-xs text-slate-500 mb-3">
-                                            License credentials can be updated later in the staff profile.
-                                        </p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">License Type</label>
-                                                <select
-                                                    value={formData.licenseType || ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, licenseType: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                >
-                                                    <option value="">Select License Type</option>
-                                                    <option value="KMPDC">Medical License (KMPDC)</option>
-                                                    <option value="NCK">Nursing License (NCK)</option>
-                                                    <option value="CDK">Clinical Officer (CDK)</option>
-                                                    <option value="PPB">Pharmacy License (PPB)</option>
-                                                    <option value="KMLTB">Lab Tech License (KMLTB)</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">License Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.licenseNumber || ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, licenseNumber: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                    placeholder="e.g., A12345"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Licensing Authority</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.licenseAuthority || ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, licenseAuthority: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                    placeholder="e.g., Medical Practitioners Board"
-                                                />
-                                            </div>
-                                            <div>
-                                                <DateInput
-                                                    label="License Expiry Date"
-                                                    value={formData.licenseExpiry || ''}
-                                                    onChange={(value) => setFormData(prev => ({ ...prev, licenseExpiry: value }))}
-                                                />
-                                            </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">License Document</label>
-                                                <input
-                                                    type="file"
-                                                    accept=".pdf,.jpg,.jpeg,.png"
-                                                    onChange={(e) => {
-                                                        if (e.target.files && e.target.files[0]) {
-                                                            setLicenseFile(e.target.files[0]);
-                                                        }
-                                                    }}
-                                                    className="w-full text-sm text-slate-500
-                                                file:mr-4 file:py-1.5 file:px-3
-                                                file:rounded-full file:border-0
-                                                file:text-xs file:font-semibold
-                                                file:bg-blue-50 file:text-blue-700
-                                                hover:file:bg-blue-100"
-                                                />
-                                                <p className="text-xs text-slate-400 mt-1">Upload PDF or Image (Max 5MB)</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Management Section */}
-                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mt-4">
-                                        <h3 className="text-sm font-bold text-slate-700 mb-3">Status Management</h3>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">Onboarding Status</label>
-                                                <select
-                                                    value={formData.onboardingStatus || 'Not started'}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, onboardingStatus: e.target.value as any }))}
-                                                    className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
-                                                >
-                                                    <option value="Not started">Not started</option>
-                                                    <option value="In progress">In progress</option>
-                                                    <option value="Completed">Completed</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">Vetting Status</label>
-                                                <select
-                                                    value={formData.vettingStatus || 'Not started'}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, vettingStatus: e.target.value as any }))}
-                                                    className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
-                                                >
-                                                    <option value="Not started">Not started</option>
-                                                    <option value="In progress">In progress</option>
-                                                    <option value="Pending review">Pending review</option>
-                                                    <option value="Verified">Verified</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-500 mb-1">Invite Status</label>
-                                                <select
-                                                    value={formData.inviteStatus || 'None'}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, inviteStatus: e.target.value as any }))}
-                                                    className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
-                                                >
-                                                    <option value="None">None</option>
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Active">Active</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Compensation fields based on employment type */}
-                                    <div className="flex justify-between items-center mt-4 mb-2">
-                                        <h3 className="text-sm font-bold text-slate-700">Compensation Details</h3>
-                                        <PrivacyToggle isVisible={showSalary} onToggle={() => setShowSalary(!showSalary)} label={showSalary ? 'Hide' : 'Show'} />
-                                    </div>
-
-                                    {/* Full-Time: Monthly Salary only */}
-                                    {formData.employmentType === 'Full-Time' && (
-                                        <div>
-                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Monthly Salary (KES) <span className="font-normal text-slate-400">- Optional</span></label>
-                                            <input
-                                                type={showSalary ? "number" : "password"}
-                                                value={formData.monthlySalaryCents ? formData.monthlySalaryCents / 100 : ''}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, monthlySalaryCents: Number(e.target.value) * 100 }))}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                placeholder={showSalary ? "e.g., 50000" : "••••••"}
-                                                readOnly={!showSalary}
-                                            />
-                                            <p className="text-xs text-[#94A3B8] mt-1">You can configure or change payroll details later.</p>
-                                        </div>
-                                    )}
-
-                                    {/* Part-Time: Monthly Salary OR Hourly Rate */}
-                                    {formData.employmentType === 'Part-Time' && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Monthly Salary (KES) <span className="font-normal text-slate-400">- Optional</span></label>
-                                                <input
-                                                    type={showSalary ? "number" : "password"}
-                                                    value={formData.monthlySalaryCents ? formData.monthlySalaryCents / 100 : ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, monthlySalaryCents: Number(e.target.value) * 100 }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                    placeholder={showSalary ? "e.g., 25000" : "••••••"}
-                                                    readOnly={!showSalary}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Hourly Rate (KES) <span className="font-normal text-slate-400">- Optional</span></label>
-                                                <input
-                                                    type={showSalary ? "number" : "password"}
-                                                    value={formData.hourlyRateCents ? formData.hourlyRateCents / 100 : ''}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, hourlyRateCents: Number(e.target.value) * 100 }))}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                                    placeholder={showSalary ? "e.g., 500" : "••••••"}
-                                                    readOnly={!showSalary}
-                                                />
-                                            </div>
-                                            <p className="col-span-2 text-xs text-[#94A3B8]">You can configure or change payroll details later.</p>
-                                        </div>
-                                    )}
-
-                                    {/* Contract/Locum/External: No salary fields, show info message */}
-                                    {(formData.employmentType === 'Contract' || formData.employmentType === 'Locum' || formData.employmentType === 'External') && (
-                                        <div className="bg-[#F1F5F9] p-3 rounded-xl border border-[#E2E8F0]">
-                                            <p className="text-sm text-[#475569]">
-                                                💡 Compensation details are not required for {formData.employmentType} staff. You can configure payroll details later if needed.
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    <div className="mt-6 pt-6 border-t border-slate-200">
-                                        {selectedStaff && user?.organizationId && (
-                                            <StaffLeaveManager
-                                                staffId={selectedStaff.id}
-                                                organizationId={user.organizationId}
-                                            />
-                                        )}
-                                    </div>
-
-                                    <div className="flex space-x-3 mt-6">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowAddModal(false); setShowEditModal(false); setSelectedStaff(null); resetForm(); }}
-                                            className="flex-1 py-3 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
-                                        >
-                                            {showEditModal ? 'Save Changes' : 'Add Staff'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )
-                }
 
                 {/* Permissions Dialog */}
                 <PermissionsDialog
