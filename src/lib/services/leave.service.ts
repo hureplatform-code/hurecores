@@ -248,6 +248,12 @@ export const leaveService = {
 
     // Update pending days in LEAVE ENTITLEMENTS
     try {
+      console.log('[LeaveService] Looking for entitlement to update pending days:', {
+        staffId: input.staffId,
+        leaveTypeId: input.leaveTypeId,
+        year: new Date().getFullYear()
+      });
+
       const balanceQuery = query(
         collections.leaveEntitlements(organizationId),
         where('staffId', '==', input.staffId),
@@ -255,16 +261,38 @@ export const leaveService = {
         where('year', '==', new Date().getFullYear())
       );
       const balanceSnapshot = await getDocs(balanceQuery);
+
       if (!balanceSnapshot.empty) {
         const balanceDoc = balanceSnapshot.docs[0];
         const currentBalance = balanceDoc.data() as LeaveEntitlement;
+        const newPendingDays = (currentBalance.pendingDays || 0) + daysRequested;
+
+        console.log('[LeaveService] Found entitlement, updating pending days:', {
+          entitlementId: balanceDoc.id,
+          currentPending: currentBalance.pendingDays || 0,
+          daysRequested,
+          newPending: newPendingDays,
+          allocated: currentBalance.allocatedDays,
+          used: currentBalance.usedDays,
+          remainingBefore: (currentBalance.allocatedDays || 0) - (currentBalance.usedDays || 0) - (currentBalance.pendingDays || 0),
+          remainingAfter: (currentBalance.allocatedDays || 0) - (currentBalance.usedDays || 0) - newPendingDays
+        });
+
         await updateDoc(balanceDoc.ref, {
-          pendingDays: (currentBalance.pendingDays || 0) + daysRequested,
+          pendingDays: newPendingDays,
           updatedAt: serverTimestamp()
+        });
+
+        console.log('[LeaveService] Successfully updated pending days');
+      } else {
+        console.warn('[LeaveService] ⚠️ No entitlement found! Cannot update pending days.', {
+          staffId: input.staffId,
+          leaveTypeId: input.leaveTypeId,
+          year: new Date().getFullYear()
         });
       }
     } catch (balanceError) {
-      console.error('Error updating pending entitlement:', balanceError);
+      console.error('[LeaveService] ❌ Error updating pending entitlement:', balanceError);
     }
 
     const request = await this.getRequestById(organizationId, docRef.id);

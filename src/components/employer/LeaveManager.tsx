@@ -60,14 +60,8 @@ const LeaveManager: React.FC = () => {
     });
 
     useEffect(() => {
-        const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        setFilters(prev => ({
-            ...prev,
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0]
-        }));
+        // Don't set default date filters - show ALL requests by default
+        // This prevents long leave requests (spanning multiple months) from being filtered out
     }, []);
 
     useEffect(() => {
