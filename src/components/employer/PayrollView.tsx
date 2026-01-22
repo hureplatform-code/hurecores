@@ -403,7 +403,8 @@ const PayrollView: React.FC = () => {
 
     const formatCurrency = (cents: number) => {
         if (!showSalaries) return 'KES •••';
-        return `KES ${(cents / 100).toLocaleString()}`;
+        // Format with no decimals, use comma separators
+        return `KES ${Math.round(cents / 100).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`
     };
 
     const getPayMethodBadge = (method: string) => {
@@ -904,31 +905,31 @@ const PayrollView: React.FC = () => {
                                                                                         <div className="flex justify-between text-xs">
                                                                                             <span className="text-slate-500">PAYE:</span>
                                                                                             <PrivacyMask isVisible={showSalaries} className="text-red-500">
-                                                                                                -{(entry.deductionDetails.paye / 100).toLocaleString()}
+                                                                                                -{((entry.deductionDetails.payeCents || entry.deductionDetails.paye || 0) / 100).toLocaleString()}
                                                                                             </PrivacyMask>
                                                                                         </div>
                                                                                         <div className="flex justify-between text-xs">
                                                                                             <span className="text-slate-500">SHIF (2.75%):</span>
                                                                                             <PrivacyMask isVisible={showSalaries} className="text-red-500">
-                                                                                                -{(entry.deductionDetails.shif / 100).toLocaleString()}
+                                                                                                -{((entry.deductionDetails.shifCents || entry.deductionDetails.shif || 0) / 100).toLocaleString()}
                                                                                             </PrivacyMask>
                                                                                         </div>
                                                                                         <div className="flex justify-between text-xs">
                                                                                             <span className="text-slate-500">NSSF (Tier I+II):</span>
                                                                                             <PrivacyMask isVisible={showSalaries} className="text-red-500">
-                                                                                                -{(entry.deductionDetails.nssf / 100).toLocaleString()}
+                                                                                                -{((entry.deductionDetails.nssfCents || entry.deductionDetails.nssf || 0) / 100).toLocaleString()}
                                                                                             </PrivacyMask>
                                                                                         </div>
                                                                                         <div className="flex justify-between text-xs">
                                                                                             <span className="text-slate-500">Housing Levy (1.5%):</span>
                                                                                             <PrivacyMask isVisible={showSalaries} className="text-red-500">
-                                                                                                -{(entry.deductionDetails.housingLevy / 100).toLocaleString()}
+                                                                                                -{((entry.deductionDetails.housingLevyCents || entry.deductionDetails.housingLevy || 0) / 100).toLocaleString()}
                                                                                             </PrivacyMask>
                                                                                         </div>
                                                                                         <div className="flex justify-between font-medium pt-1 border-t border-slate-100">
                                                                                             <span className="text-slate-700">Total Deductions:</span>
                                                                                             <PrivacyMask isVisible={showSalaries} className="text-red-600">
-                                                                                                -{(entry.deductionDetails.total / 100).toLocaleString()}
+                                                                                                -{((entry.deductionDetails.totalCents || entry.deductionDetails.total || 0) / 100).toLocaleString()}
                                                                                             </PrivacyMask>
                                                                                         </div>
                                                                                     </div>

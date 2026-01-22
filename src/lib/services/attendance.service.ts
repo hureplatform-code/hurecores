@@ -165,8 +165,10 @@ export const attendanceService = {
     }
 
     // Check if staff is active
+    // Note: We allow 'Active' status. If a new employee just accepted invitation,
+    // their status should be set to 'Active' during invitation acceptance.
     if (profile.staffStatus !== 'Active') {
-      const error: any = new Error('Your account is not active. Please contact admin.');
+      const error: any = new Error(`Your account status is '${profile.staffStatus}'. Please contact admin.`);
       error.code = 'INACTIVE_STAFF';
       throw error;
     }

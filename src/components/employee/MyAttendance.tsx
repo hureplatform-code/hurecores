@@ -136,7 +136,19 @@ const MyAttendance: React.FC = () => {
     }, [user?.organizationId, user?.id]);
 
     const handleClockIn = async () => {
-        if (!user?.organizationId || !user?.id) return;
+        if (!user?.organizationId || !user?.id) {
+            console.error('Clock-in failed: Missing user data:', { userId: user?.id, orgId: user?.organizationId });
+            alert('Unable to clock in: User data is incomplete. Please contact admin.');
+            return;
+        }
+
+        console.log('Attempting clock-in with:', {
+            userId: user.id,
+            organizationId: user.organizationId,
+            locationId: user.locationId,
+            profileOrganizationId: profile?.organizationId,
+            profileStatus: profile?.staffStatus
+        });
 
         setClockingIn(true);
         try {

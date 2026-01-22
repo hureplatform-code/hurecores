@@ -152,6 +152,16 @@ export const payrollService = {
         rules
       );
 
+      // Check for validation errors
+      if (!calculation.validation.isValid) {
+        console.error(`Payroll validation errors for staff ${staff.id}:`, calculation.validation.errors);
+      }
+
+      // Convert all deductions to cents (store as integers)
+      const nssfCents = Math.round(calculation.deductions.nssf * 100);
+      const payeCents = Math.round(calculation.deductions.paye * 100);
+      const shifCents = Math.round(calculation.deductions.shif * 100);
+      const housingLevyCents = Math.round(calculation.deductions.housingLevy * 100);
       const netPayCents = Math.round(calculation.netPay * 100);
       const deductionsTotalCents = Math.round(calculation.deductions.total * 100);
 
@@ -168,7 +178,21 @@ export const payrollService = {
         payableBaseCents,
         allowancesTotalCents: 0,
         deductionsTotalCents,
-        deductionDetails: calculation.deductions, // Store breakdown
+        // Store deduction breakdown as numeric cents
+        deductionDetails: {
+          nssfCents,
+          nssfTier1Cents: Math.round((calculation.deductions.nssfTier1 || 0) * 100),
+          nssfTier2Cents: Math.round((calculation.deductions.nssfTier2 || 0) * 100),
+          payeCents,
+          payeGrossTaxCents: Math.round((calculation.paye?.grossTax || 0) * 100),
+          payePersonalReliefCents: Math.round((calculation.paye?.personalRelief || 0) * 100),
+          shifCents,
+          housingLevyCents,
+          totalCents: deductionsTotalCents,
+          // Validation info for debugging
+          isValid: calculation.validation.isValid,
+          validationErrors: calculation.validation.errors
+        },
         grossPayCents,
         netPayCents,
         isPaid: false,
@@ -189,7 +213,7 @@ export const payrollService = {
         absentUnits,
         payableBaseCents,
         allowancesTotalCents: 0,
-        deductionsTotalCents: 0,
+        deductionsTotalCents,
         grossPayCents,
         netPayCents,
         isPaid: false,
