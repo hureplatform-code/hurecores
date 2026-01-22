@@ -288,6 +288,12 @@ service cloud.firestore {
       allow update, delete: if false; 
     }
     
+    // System Settings (Global Config - e.g. Payroll Rules)
+    match /system_settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
     // Statutory Rules (Kenya payroll tax/deduction rates)
     match /statutoryRules/{ruleId} {
       // All authenticated users can read (needed for payroll calculations)

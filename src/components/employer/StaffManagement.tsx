@@ -198,103 +198,7 @@ interface StaffManagementProps {
     selectedLocationId?: string;
 }
 
-const ReviewVettingModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    staff: Profile | null;
-    onUpdateStatus: (status: 'Pending review' | 'In progress' | 'Verified') => void;
-    onReject: () => void;
-    onExpire: () => void;
-}> = ({ isOpen, onClose, staff, onUpdateStatus, onReject, onExpire }) => {
-    if (!isOpen || !staff) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl animate-in fade-in zoom-in duration-200">
-                <div className="sticky top-0 bg-white flex justify-between items-center p-6 border-b border-slate-100 z-10">
-                    <h2 className="text-xl font-bold text-slate-900">Review Vetting / Credentials</h2>
-                    <button onClick={onClose} className="px-3 py-1 text-slate-400 hover:text-slate-600 font-bold transition-colors">Close</button>
-                </div>
-
-                <div className="p-6">
-                    <div className="flex items-start gap-4 mb-6">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
-                            {(staff.firstName?.[0] || '') + (staff.lastName?.[0] || '')}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-900">{staff.fullName} • {staff.systemRole} • {staff.jobTitle || 'No Title'}</h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                                Email: {staff.email} • Phone: {staff.phone || 'N/A'}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 mb-6">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-slate-700">License</span>
-                            <span className="text-sm text-slate-600 font-medium">
-                                {staff.license?.type || 'None'} • {staff.license?.number || 'No Number'}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-slate-700">Expiry</span>
-                            {isLicenseExpired(staff.license?.expiryDate) ? (
-                                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold border border-red-200">Expired</span>
-                            ) : (
-                                <span className="text-sm text-slate-600">{staff.license?.expiryDate ? formatDateKE(staff.license.expiryDate) : 'N/A'}</span>
-                            )}
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-slate-700">Current vetting</span>
-                            <VettingBadge status={staff.vettingStatus} />
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-slate-700">Invite</span>
-                            <SimpleBadge label={staff.inviteStatus || 'None'} type={staff.inviteStatus === 'Active' ? 'success' : staff.inviteStatus === 'Pending' ? 'warning' : 'neutral'} />
-                        </div>
-                    </div>
-
-                    <p className="text-xs text-slate-400 mb-6">
-                        Check credentials and update vetting status. (In production: attach documents, view audit history, etc.)
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 justify-end">
-                        <button
-                            onClick={() => onUpdateStatus('Pending review')}
-                            className="px-4 py-2.5 bg-white border-2 border-slate-300 text-slate-800 rounded-lg font-extrabold text-sm hover:bg-slate-50 transition-colors"
-                        >
-                            Mark pending
-                        </button>
-                        <button
-                            onClick={() => onUpdateStatus('In progress')}
-                            className="px-4 py-2.5 bg-blue-600 border-2 border-blue-700 text-white rounded-lg font-extrabold text-sm hover:bg-blue-700 transition-colors shadow-sm"
-                        >
-                            In progress
-                        </button>
-                        <button
-                            onClick={() => onUpdateStatus('Verified')}
-                            className="px-4 py-2.5 bg-emerald-600 border-2 border-emerald-700 text-white rounded-lg font-extrabold text-sm hover:bg-emerald-700 transition-colors shadow-sm"
-                        >
-                            Verify
-                        </button>
-                        <button
-                            onClick={onReject}
-                            className="px-4 py-2.5 bg-rose-600 border-2 border-rose-700 text-white rounded-lg font-extrabold text-sm hover:bg-rose-700 transition-colors shadow-sm"
-                        >
-                            Reject
-                        </button>
-                        <button
-                            onClick={onExpire}
-                            className="px-4 py-2.5 bg-orange-500 border-2 border-orange-600 text-white rounded-lg font-extrabold text-sm hover:bg-orange-600 transition-colors shadow-sm"
-                        >
-                            Mark expired
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId }) => {
     const { user } = useAuth();
@@ -305,10 +209,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [showReviewModal, setShowReviewModal] = useState(false);
+
     const [showPermissionsModal, setShowPermissionsModal] = useState(false);
     const [selectedStaff, setSelectedStaff] = useState<Profile | null>(null);
-    const [selectedReviewStaff, setSelectedReviewStaff] = useState<Profile | null>(null);
+
     const [adminSeats, setAdminSeats] = useState({ used: 0, max: 0 });
     const [pendingPermissions, setPendingPermissions] = useState<StaffPermissions | null>(null);
     const [inviteLink, setInviteLink] = useState('');
@@ -653,7 +557,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         }, user.organizationId);
 
         if (result.success) {
-            console.log('Staff update SUCCESS - license should now be saved');
             setShowEditModal(false);
             setSelectedStaff(null);
             resetForm();
@@ -670,25 +573,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         return location?.name || '-';
     };
 
-    const handleVettingUpdate = async (status: 'Pending review' | 'In progress' | 'Verified') => {
-        if (!selectedReviewStaff || !user?.organizationId) return;
 
-        const result = await staffService.update(selectedReviewStaff.id, {
-            vettingStatus: status,
-            // Also update license status if verifying
-            ...(status === 'Verified' ? {
-                license: selectedReviewStaff.license ? { ...selectedReviewStaff.license, verificationStatus: 'Verified' } : undefined
-            } : {})
-        }, user.organizationId);
-
-        if (result.success) {
-            loadData();
-            setShowReviewModal(false);
-            setSelectedReviewStaff(null);
-        } else {
-            alert(result.error || 'Failed to update status');
-        }
-    };
 
     // Inline vetting status update (for table editing)
     const handleInlineVettingUpdate = async (staffId: string, status: 'Pending review' | 'In progress' | 'Verified' | 'Not started') => {
@@ -713,41 +598,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         }
     };
 
-    const handleVettingReject = async () => {
-        if (!selectedReviewStaff || !user?.organizationId) return;
-        if (!confirm('Reject this staff member\'s credentials?')) return;
 
-        const result = await staffService.update(selectedReviewStaff.id, {
-            vettingStatus: 'Pending review', // Reset to pending if rejected? Or have a 'Rejected' status in vetting? Types say: 'Verified' | 'Pending review' | 'In progress' | 'Not started'. Let's stick to Pending.
-            // But we can mark license as rejected
-            license: selectedReviewStaff.license ? { ...selectedReviewStaff.license, verificationStatus: 'Rejected' } : undefined
-        }, user.organizationId);
-
-        if (result.success) {
-            loadData();
-            setShowReviewModal(false);
-            setSelectedReviewStaff(null);
-        } else {
-            alert(result.error);
-        }
-    };
-
-    const handleVettingExpire = async () => {
-        if (!selectedReviewStaff || !user?.organizationId) return;
-        if (!confirm('Mark credentials as expired?')) return;
-
-        const result = await staffService.update(selectedReviewStaff.id, {
-            license: selectedReviewStaff.license ? { ...selectedReviewStaff.license, verificationStatus: 'Expired' } : undefined
-        }, user.organizationId);
-
-        if (result.success) {
-            loadData();
-            setShowReviewModal(false);
-            setSelectedReviewStaff(null);
-        } else {
-            alert(result.error);
-        }
-    };
 
     // Inline handler for Onboarding status update
     const handleInlineOnboardingUpdate = async (staffId: string, status: 'Completed' | 'In progress' | 'Not started') => {
@@ -802,6 +653,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
     //Filter staff based on tab and location
     const visibleStaff = React.useMemo(() => {
         return staff.filter(s => {
+            // Global Filter: Location (Apply to ALL tabs)
+            const isAllLocations = !selectedLocationId || selectedLocationId === 'all';
+            if (!isAllLocations && s.locationId !== selectedLocationId) return false;
+
             // Always exclude archived staff
             if (s.staffStatus === 'Archived') return false;
 
@@ -809,15 +664,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
             if (staffTab === 'active') {
                 if (s.staffStatus === 'Inactive') return false;
 
-                // Active tab filters
-                const isAllLocations = !selectedLocationId || selectedLocationId === 'all';
-                if (!isAllLocations && s.locationId !== selectedLocationId) return false;
-
                 if (showExpiredOnly && !isLicenseExpired(s.license?.expiryDate)) return false;
 
             } else if (staffTab === 'inactive') {
                 // Inactive tab: show only Inactive staff
-                // SKIP location/expired filters to ensure they are always findable
                 if (s.staffStatus !== 'Inactive') return false;
             } else if (staffTab === 'pendingReview') {
                 if (s.staffStatus === 'Inactive' || s.staffStatus === 'Archived') return false;
@@ -1445,6 +1295,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                 </div>
                                             )}
 
+                                            {/* Leave Allocations - Edit Mode Only */}
+                                            {showEditModal && selectedStaff && (
+                                                <details className="bg-slate-50 border border-slate-200 rounded-xl mt-3">
+                                                    <summary className="p-3 cursor-pointer text-sm font-bold text-slate-900 flex justify-between items-center">
+                                                        Leave Allocations
+                                                        <span className="text-xs font-normal text-slate-500">Manage annual leave entitlement days.</span>
+                                                    </summary>
+                                                    <div className="p-3 pt-2">
+                                                        <StaffLeaveManager
+                                                            staffId={selectedStaff.id}
+                                                            organizationId={user?.organizationId || ''}
+                                                        />
+                                                    </div>
+                                                </details>
+                                            )}
+
 
                                             <div className="flex space-x-3 mt-4 pt-3 border-t border-slate-100">
                                                 <button
@@ -1481,15 +1347,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                     initialPermissions={pendingPermissions || undefined}
                 />
 
-                {/* Review Vetting Modal */}
-                <ReviewVettingModal
-                    isOpen={showReviewModal}
-                    onClose={() => { setShowReviewModal(false); setSelectedReviewStaff(null); }}
-                    staff={selectedReviewStaff}
-                    onUpdateStatus={handleVettingUpdate}
-                    onReject={handleVettingReject}
-                    onExpire={handleVettingExpire}
-                />
+
             </div>
         </div>
     );

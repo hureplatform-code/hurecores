@@ -42,7 +42,7 @@ export const statutoryService = {
      */
     async getGlobalRules(): Promise<StatutoryRules> {
         try {
-            const docRef = doc(db, 'system_settings', 'payroll_rules');
+            const docRef = doc(db, 'statutoryRules', 'payroll_rules');
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {

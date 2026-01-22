@@ -5,7 +5,7 @@ import type { Organization, Location, VerificationStatus, SubscriptionStatus } f
 import { formatDateKE } from '../../lib/utils/dateFormat';
 import DateInput from '../common/DateInput';
 
-const OrgDetails: React.FC = () => {
+const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocationId }) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [org, setOrg] = useState<Organization | null>(null);
@@ -199,14 +199,19 @@ const OrgDetails: React.FC = () => {
         return statusMap[status] || statusMap['Trial'];
     };
 
+    // Apply filtering
+    const visibleLocations = (selectedLocationId && selectedLocationId !== 'all')
+        ? locations.filter(l => l.id === selectedLocationId)
+        : locations;
+
     // Compliance summary
     const complianceSummary = {
         org: org?.orgStatus === 'Verified',
         facilities: {
-            approved: locations.filter(l => l.status === 'Verified' && !(l.licenseExpiry && new Date(l.licenseExpiry) < new Date())).length,
-            pending: locations.filter(l => l.status === 'Pending').length,
-            expired: locations.filter(l => l.licenseExpiry && new Date(l.licenseExpiry) < new Date()).length,
-            draft: locations.filter(l => l.status === 'Unverified' && !l.licenseNumber).length
+            approved: visibleLocations.filter(l => l.status === 'Verified' && !(l.licenseExpiry && new Date(l.licenseExpiry) < new Date())).length,
+            pending: visibleLocations.filter(l => l.status === 'Pending').length,
+            expired: visibleLocations.filter(l => l.licenseExpiry && new Date(l.licenseExpiry) < new Date()).length,
+            draft: visibleLocations.filter(l => l.status === 'Unverified' && !l.licenseNumber).length
         }
     };
 
@@ -410,7 +415,7 @@ const OrgDetails: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
-                        {locations.map(location => {
+                        {visibleLocations.map(location => {
                             const facilityStatus = getFacilityStatus(location);
                             const isExpired = location.licenseExpiry && new Date(location.licenseExpiry) < new Date();
 
@@ -501,6 +506,12 @@ const OrgDetails: React.FC = () => {
                                 <p className="text-4xl mb-2">📍</p>
                                 <p>No locations added yet</p>
                                 <a href="/employer/locations" className="text-blue-600 font-medium text-sm">Add Location →</a>
+                            </div>
+                        )}
+
+                        {locations.length > 0 && visibleLocations.length === 0 && (
+                            <div className="text-center py-8 text-slate-500">
+                                <p>No facilities found at this location.</p>
                             </div>
                         )}
                     </div>

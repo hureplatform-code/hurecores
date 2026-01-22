@@ -50,7 +50,7 @@ const StatutoryRulesManager: React.FC = () => {
 
     const loadRules = async () => {
         try {
-            const docRef = doc(db, 'system_settings', 'payroll_rules');
+            const docRef = doc(db, 'statutoryRules', 'payroll_rules');
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
@@ -70,7 +70,7 @@ const StatutoryRulesManager: React.FC = () => {
         setError('');
 
         try {
-            const docRef = doc(db, 'system_settings', 'payroll_rules');
+            const docRef = doc(db, 'statutoryRules', 'payroll_rules');
             await setDoc(docRef, {
                 ...rules,
                 updatedAt: serverTimestamp()

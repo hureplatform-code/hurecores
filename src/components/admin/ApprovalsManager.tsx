@@ -59,7 +59,7 @@ interface Facility {
     approvalStatus: ApprovalStatus;
     licenseNumber?: string;
     licensingBody?: string;
-    licenseDocUrl?: string;
+    licenseDocumentUrl?: string;
     expiryDate?: string;
     rejectionReason?: string;
     suspensionReason?: string;
@@ -168,7 +168,7 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                         licenseInfo = {
                             licenseNumber: verData.licenseNumber,
                             licensingBody: verData.licensingBody,
-                            licenseDocUrl: verData.documentUrl,
+                            licenseDocumentUrl: verData.documentUrl,
                             expiryDate: verData.expiryDate
                         };
                     } else {
@@ -176,6 +176,14 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                         if (data.verificationStatus === 'Approved') approvalStatus = 'Approved';
                         else if (data.verificationStatus === 'Active') approvalStatus = 'Active';
                         // else default to Pending Review so it shows up
+
+                        // Populate license info from Location data
+                        licenseInfo = {
+                            licenseNumber: data.licenseNumber,
+                            licensingBody: data.licensingBody,
+                            licenseDocumentUrl: data.licenseDocumentUrl,
+                            expiryDate: data.licenseExpiry
+                        };
                     }
 
                     facilitiesData.push({
@@ -743,7 +751,7 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
 
                                                 {/* View Documents Link for Facilities */}
                                                 <div className="flex gap-2">
-                                                    {facility.licenseDocUrl ? (
+                                                    {facility.licenseDocumentUrl ? (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -942,9 +950,9 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                         <div className="pt-4 border-t border-slate-100">
                             <span className="text-slate-500 font-medium">Facility Documents</span>
                             <div className="mt-2 space-y-2">
-                                {selectedFacility.licenseDocUrl ? (
+                                {selectedFacility.licenseDocumentUrl ? (
                                     <button
-                                        onClick={() => handleViewDocument(selectedFacility.licenseDocUrl!)}
+                                        onClick={() => handleViewDocument(selectedFacility.licenseDocumentUrl!)}
                                         className="flex justify-between items-center p-2 bg-slate-50 rounded-lg hover:bg-slate-100 w-full text-left"
                                     >
                                         <span className="text-slate-700">📄 License Document</span>

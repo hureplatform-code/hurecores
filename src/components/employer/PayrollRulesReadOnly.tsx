@@ -52,7 +52,7 @@ export default function PayrollRulesReadOnly() {
 
   const loadRules = async () => {
     try {
-      const docRef = doc(db, 'system_settings', 'payroll_rules');
+      const docRef = doc(db, 'statutoryRules', 'payroll_rules');
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {

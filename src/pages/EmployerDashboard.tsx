@@ -141,12 +141,12 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             } />
             <Route path="/organization" element={
               <SubscriptionGuard allowVerificationAccess={true}>
-                <OrgDetails />
+                <OrgDetails selectedLocationId={selectedLocationId} />
               </SubscriptionGuard>
             } />
             <Route path="/verification" element={
               <SubscriptionGuard allowVerificationAccess={true}>
-                <OrgDetails />
+                <OrgDetails selectedLocationId={selectedLocationId} />
               </SubscriptionGuard>
             } />
             <Route path="/locations" element={
