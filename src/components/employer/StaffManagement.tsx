@@ -1165,7 +1165,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                             <details className="bg-blue-50 border border-blue-200 rounded-xl mt-3">
                                                 <summary className="p-3 cursor-pointer text-sm font-bold text-blue-900 flex justify-between items-center">
                                                     Professional Credentials
-                                                    <span className="text-xs font-normal text-slate-500">License credentials can be updated later in the staff profile but is required for all clinical team professionals.</span>
+                                                    <span className="text-xs font-normal text-slate-500">Tap to expand</span>
                                                 </summary>
                                                 <div className="p-3 pt-2">
                                                     <div className="grid grid-cols-2 gap-3">
@@ -1235,6 +1235,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                 </div>
                                             </details>
 
+                                            {/* Leave Allocations - Edit Mode Only - Right after Professional Credentials */}
+                                            {showEditModal && selectedStaff && (
+                                                <details className="bg-green-50 border border-green-200 rounded-xl mt-3">
+                                                    <summary className="p-3 cursor-pointer text-sm font-bold text-green-900 flex justify-between items-center">
+                                                        Leave Allocations
+                                                        <span className="text-xs font-normal text-slate-500">Tap to expand</span>
+                                                    </summary>
+                                                    <div className="p-3 pt-2">
+                                                        <StaffLeaveManager
+                                                            staffId={selectedStaff.id}
+                                                            organizationId={user?.organizationId || ''}
+                                                        />
+                                                    </div>
+                                                </details>
+                                            )}
+
                                             {/* Compensation fields based on employment type */}
                                             <div className="flex justify-between items-center mt-4 mb-2">
                                                 <h3 className="text-sm font-bold text-slate-700">Compensation Details</h3>
@@ -1295,21 +1311,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                 </div>
                                             )}
 
-                                            {/* Leave Allocations - Edit Mode Only */}
-                                            {showEditModal && selectedStaff && (
-                                                <details className="bg-slate-50 border border-slate-200 rounded-xl mt-3">
-                                                    <summary className="p-3 cursor-pointer text-sm font-bold text-slate-900 flex justify-between items-center">
-                                                        Leave Allocations
-                                                        <span className="text-xs font-normal text-slate-500">Manage annual leave entitlement days.</span>
-                                                    </summary>
-                                                    <div className="p-3 pt-2">
-                                                        <StaffLeaveManager
-                                                            staffId={selectedStaff.id}
-                                                            organizationId={user?.organizationId || ''}
-                                                        />
-                                                    </div>
-                                                </details>
-                                            )}
+
 
 
                                             <div className="flex space-x-3 mt-4 pt-3 border-t border-slate-100">
