@@ -156,7 +156,14 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                     const verSnap = await getDocs(verQuery);
 
                     let approvalStatus: ApprovalStatus = 'Pending Review';
-                    let licenseInfo = {};
+
+                    // First, get license info from location data (source of truth)
+                    let licenseInfo = {
+                        licenseNumber: data.licenseNumber || '',
+                        licensingBody: data.licensingBody || '',
+                        licenseDocumentUrl: data.licenseDocumentUrl || '',
+                        expiryDate: data.licenseExpiry || ''
+                    };
 
                     if (!verSnap.empty) {
                         const verData = verSnap.docs[0].data();
@@ -165,25 +172,19 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                         else if (verData.status === 'Rejected') approvalStatus = 'Rejected';
                         else if (verData.status === 'Suspended') approvalStatus = 'Suspended';
 
+                        // Merge verification data - use verData if available, fallback to location data
                         licenseInfo = {
-                            licenseNumber: verData.licenseNumber,
-                            licensingBody: verData.licensingBody,
-                            licenseDocumentUrl: verData.documentUrl,
-                            expiryDate: verData.expiryDate
+                            licenseNumber: verData.licenseNumber || verData.identifier || data.licenseNumber || '',
+                            licensingBody: verData.licensingBody || verData.authority || data.licensingBody || '',
+                            licenseDocumentUrl: verData.documentUrl || data.licenseDocumentUrl || '',
+                            expiryDate: verData.expiryDate || data.licenseExpiry || ''
                         };
                     } else {
                         // If no verification request, infer status from location data or default to Pending
                         if (data.verificationStatus === 'Approved') approvalStatus = 'Approved';
                         else if (data.verificationStatus === 'Active') approvalStatus = 'Active';
+                        else if (data.status === 'Pending') approvalStatus = 'Pending Review';
                         // else default to Pending Review so it shows up
-
-                        // Populate license info from Location data
-                        licenseInfo = {
-                            licenseNumber: data.licenseNumber,
-                            licensingBody: data.licensingBody,
-                            licenseDocumentUrl: data.licenseDocumentUrl,
-                            expiryDate: data.licenseExpiry
-                        };
                     }
 
                     facilitiesData.push({
@@ -736,11 +737,9 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                                                         Parent: <span className="text-slate-700">{facility.organizationName}</span>
                                                     </p>
                                                     <p className="text-sm text-slate-500">📍 {facility.city}</p>
-                                                    {facility.licenseNumber && (
-                                                        <p className="text-xs text-slate-500 mt-1">
-                                                            License: <strong>{facility.licenseNumber}</strong>
-                                                        </p>
-                                                    )}
+                                                    <div className="flex gap-2 mt-2 text-xs text-slate-500">
+                                                        <span>License #: <strong className="text-slate-700">{facility.licenseNumber || 'N/A'}</strong></span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -932,19 +931,17 @@ const ApprovalsManager: React.FC<ApprovalsManagerProps> = ({ initialFilter = 'Pe
                             <p className="font-semibold text-slate-900">{selectedFacility.phone || 'Not provided'}</p>
                         </div>
                         <div>
-                            <span className="text-slate-500">License Number</span>
-                            <p className="font-semibold text-slate-900">{selectedFacility.licenseNumber || 'Not provided'}</p>
+                            <span className="text-slate-500">License #</span>
+                            <p className="font-semibold text-slate-900">{selectedFacility.licenseNumber || 'N/A'}</p>
                         </div>
                         <div>
                             <span className="text-slate-500">Licensing Body</span>
-                            <p className="font-semibold text-slate-900">{selectedFacility.licensingBody || 'Not provided'}</p>
+                            <p className="font-semibold text-slate-900">{selectedFacility.licensingBody || 'N/A'}</p>
                         </div>
-                        {selectedFacility.expiryDate && (
-                            <div>
-                                <span className="text-slate-500">License Expiry</span>
-                                <p className="font-semibold text-slate-900">{selectedFacility.expiryDate}</p>
-                            </div>
-                        )}
+                        <div>
+                            <span className="text-slate-500">License Expiry</span>
+                            <p className="font-semibold text-slate-900">{selectedFacility.expiryDate || 'N/A'}</p>
+                        </div>
 
                         {/* Documents */}
                         <div className="pt-4 border-t border-slate-100">
