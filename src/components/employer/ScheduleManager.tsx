@@ -88,11 +88,12 @@ const ScheduleManager: React.FC = () => {
 
         setLoading(true);
         try {
-            // Calculate week range
+            // Calculate week range (Monday start)
             const date = new Date(selectedDate);
-            const dayOfWeek = date.getDay();
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
             const startOfWeek = new Date(date);
-            startOfWeek.setDate(date.getDate() - dayOfWeek);
+            startOfWeek.setDate(diff);
             const endOfWeek = new Date(startOfWeek);
             endOfWeek.setDate(startOfWeek.getDate() + 6);
 
@@ -322,12 +323,13 @@ const ScheduleManager: React.FC = () => {
         shiftsByDate[shift.date].push(shift);
     });
 
-    // Generate week dates
+    // Generate week dates (Monday start)
     const getWeekDates = () => {
         const date = new Date(selectedDate);
-        const dayOfWeek = date.getDay();
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
         const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - dayOfWeek);
+        startOfWeek.setDate(diff);
 
         const dates = [];
         for (let i = 0; i < 7; i++) {
@@ -339,7 +341,7 @@ const ScheduleManager: React.FC = () => {
     };
 
     const weekDates = getWeekDates();
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     // Get available staff for assignment (filtered by job title matching role required)
     const getAvailableStaff = (shift: Shift) => {
@@ -661,17 +663,25 @@ const ScheduleManager: React.FC = () => {
                                         <div>
                                             <label className="block text-sm font-medium text-slate-600 mb-2">Repeat on days</label>
                                             <div className="flex flex-wrap gap-2">
-                                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                                                {[
+                                                    { label: 'Mon', value: 1 },
+                                                    { label: 'Tue', value: 2 },
+                                                    { label: 'Wed', value: 3 },
+                                                    { label: 'Thu', value: 4 },
+                                                    { label: 'Fri', value: 5 },
+                                                    { label: 'Sat', value: 6 },
+                                                    { label: 'Sun', value: 0 },
+                                                ].map(({ label, value }) => (
                                                     <button
-                                                        key={day}
+                                                        key={label}
                                                         type="button"
-                                                        onClick={() => toggleRepeatDay(index)}
-                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${repeatDays.includes(index)
+                                                        onClick={() => toggleRepeatDay(value)}
+                                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${repeatDays.includes(value)
                                                             ? 'bg-blue-600 text-white'
                                                             : 'bg-white border border-slate-300 text-slate-600 hover:border-blue-500'
                                                             }`}
                                                     >
-                                                        {day}
+                                                        {label}
                                                     </button>
                                                 ))}
                                             </div>

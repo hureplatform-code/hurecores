@@ -80,8 +80,12 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         if (subscription?.trialEndsAt) {
             trialEndDate = new Date(subscription.trialEndsAt);
-        } else if (organization?.createdAt) {
-            // Default 10 days from creation
+        } else if (organization?.approvedAt) {
+            // Start trial from approval date
+            trialEndDate = new Date(organization.approvedAt);
+            trialEndDate.setDate(trialEndDate.getDate() + 10); // 10 days trial
+        } else if (organization?.orgStatus === 'Verified' && organization?.createdAt) {
+            // Fallback for verified orgs without approvedAt (legacy)
             trialEndDate = new Date(organization.createdAt);
             trialEndDate.setDate(trialEndDate.getDate() + 10);
         }

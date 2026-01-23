@@ -118,6 +118,7 @@ export interface Organization {
   maxAdmins: number;
   logoUrl?: string;
   rejectionReason?: string;
+  approvedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

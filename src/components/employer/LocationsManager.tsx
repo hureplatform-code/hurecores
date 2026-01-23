@@ -7,9 +7,10 @@ import DateInput from '../common/DateInput';
 
 interface LocationsManagerProps {
     onLocationUpdate?: () => void;
+    selectedLocationId?: string;
 }
 
-const LocationsManager: React.FC<LocationsManagerProps> = ({ onLocationUpdate }) => {
+const LocationsManager: React.FC<LocationsManagerProps> = ({ onLocationUpdate, selectedLocationId }) => {
     const { user } = useAuth();
     const [locations, setLocations] = useState<Location[]>([]);
     const [loading, setLoading] = useState(true);
@@ -207,138 +208,168 @@ const LocationsManager: React.FC<LocationsManagerProps> = ({ onLocationUpdate })
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {locations.map((loc) => {
-                        const status = getStatusBadge(loc);
-                        const isPending = loc.status === 'Pending';
+                    {(() => {
+                        // Filter locations based on selected location
+                        const visibleLocations = (selectedLocationId && selectedLocationId !== 'all')
+                            ? locations.filter(l => l.id === selectedLocationId)
+                            : locations;
 
-                        return (
-                            <div key={loc.id} className={`bg-white p-6 rounded-2xl border shadow-sm ${isLicenseExpired(loc.licenseExpiry) ? 'border-red-300' : 'border-slate-200'}`}>
-                                <div className="flex flex-col lg:flex-row gap-6">
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-3 mb-2">
-                                            <h3 className="text-xl font-bold text-[#1a2e35]">{loc.name}</h3>
-                                            {loc.isPrimary && <span className="bg-[#e0f2f1] text-[#0f766e] text-xs font-bold uppercase px-2 py-1 rounded border border-[#4fd1c5]/30">Primary</span>}
-                                            <span className={`text-xs font-bold uppercase px-2 py-1 rounded border ${status.color}`}>
-                                                {status.label}
-                                            </span>
+                        if (visibleLocations.length === 0) {
+                            return (
+                                <div className="bg-white p-16 rounded-2xl border border-slate-200 shadow-sm text-center">
+                                    <div className="text-6xl mb-4 opacity-20">📍</div>
+                                    <p className="text-slate-500">No location found matching the selected filter.</p>
+                                </div>
+                            );
+                        }
+
+                        return visibleLocations.map((loc) => {
+                            const status = getStatusBadge(loc);
+                            const isPending = loc.status === 'Pending';
+
+                            return (
+                                <div key={loc.id} className={`bg-white p-6 rounded-2xl border shadow-sm ${isLicenseExpired(loc.licenseExpiry) ? 'border-red-300' : 'border-slate-200'}`}>
+                                    <div className="flex flex-col lg:flex-row gap-6">
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-3 mb-2">
+                                                <h3 className="text-xl font-bold text-[#1a2e35]">{loc.name}</h3>
+                                                {loc.isPrimary && <span className="bg-[#e0f2f1] text-[#0f766e] text-xs font-bold uppercase px-2 py-1 rounded border border-[#4fd1c5]/30">Primary</span>}
+                                                <span className={`text-xs font-bold uppercase px-2 py-1 rounded border ${status.color}`}>
+                                                    {status.label}
+                                                </span>
+                                            </div>
+                                            <p className="text-slate-500">{loc.address || 'No address'}{loc.city ? `, ${loc.city}` : ''}</p>
+                                            <p className="text-slate-500 text-sm mt-1">{loc.phone || 'No phone'}</p>
+
+                                            {/* Pending Location Notice */}
+                                            {isPending && (
+                                                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                                    <p className="font-semibold text-amber-800 mb-2">⚠️ Limited actions until verified</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <p className="text-emerald-700 font-semibold">Employer CAN access:</p>
+                                                        <div className="pl-2 space-y-0.5 text-emerald-700 text-xs">
+                                                            <p>• Scheduling</p>
+                                                            <p>• Attendance</p>
+                                                            <p>• Leave</p>
+                                                            <p>• Staff onboarding</p>
+                                                            <p>• Credential collection</p>
+                                                            <p>• Basic HR records</p>
+                                                        </div>
+                                                        <p className="text-red-700 font-semibold mt-2">🚫 Employer CANNOT access:</p>
+                                                        <div className="pl-2 space-y-0.5 text-red-700 text-xs">
+                                                            <p>• Payroll module (at all)</p>
+                                                            <p>• Payroll previews</p>
+                                                            <p>• Payroll exports</p>
+                                                            <p>• Payroll Report (under report)</p>
+                                                            <p>• Pay history generation</p>
+                                                            <p>• Employees pay visibility</p>
+                                                            <p>• Pay History, employee dashboard</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                        <p className="text-slate-500">{loc.address || 'No address'}{loc.city ? `, ${loc.city}` : ''}</p>
-                                        <p className="text-slate-500 text-sm mt-1">{loc.phone || 'No phone'}</p>
 
-                                        {/* Pending Location Notice */}
-                                        {isPending && (
-                                            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                                                <p className="font-semibold text-amber-800 mb-2">⚠️ Limited actions until verified</p>
-                                                <div className="grid grid-cols-2 gap-2 text-sm text-amber-700">
-                                                    <p>• Scheduling: <span className="text-emerald-600 font-semibold">✅ Allowed</span></p>
-                                                    <p>• Attendance: <span className="text-emerald-600 font-semibold">✅ Allowed</span></p>
-                                                    <p>• Payroll preview: <span className="text-emerald-600 font-semibold">✅ Allowed</span></p>
-                                                    <p>• Payroll payout: <span className="text-red-600 font-semibold">❌ Blocked</span></p>
-                                                    <p>• Invoicing: <span className="text-red-600 font-semibold">❌ Blocked</span></p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                        <div className="w-full lg:w-1/2 bg-slate-50 rounded-xl p-6 border border-slate-100">
+                                            <h4 className="font-bold text-slate-900 text-sm mb-4 border-b border-slate-200 pb-2">Facility Verification</h4>
 
-                                    <div className="w-full lg:w-1/2 bg-slate-50 rounded-xl p-6 border border-slate-100">
-                                        <h4 className="font-bold text-slate-900 text-sm mb-4 border-b border-slate-200 pb-2">Facility Verification</h4>
-
-                                        {loc.status === 'Verified' && !isLicenseExpired(loc.licenseExpiry) ? (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center text-green-700 text-sm font-bold bg-green-50 p-2 rounded-lg mb-3">
-                                                    <span className="mr-2">✓</span> License Valid
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                                    <div>
-                                                        <span className="text-slate-500 block text-xs uppercase font-bold">License No.</span>
-                                                        <span className="font-mono font-bold text-slate-700">{loc.licenseNumber}</span>
+                                            {loc.status === 'Verified' && !isLicenseExpired(loc.licenseExpiry) ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center text-green-700 text-sm font-bold bg-green-50 p-2 rounded-lg mb-3">
+                                                        <span className="mr-2">✓</span> License Valid
                                                     </div>
-                                                    <div>
-                                                        <span className="text-slate-500 block text-xs uppercase font-bold">Body</span>
-                                                        <span className="font-bold text-slate-700">{loc.licensingBody}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-slate-500 block text-xs uppercase font-bold">Expires</span>
-                                                        <span className="font-mono font-bold text-slate-700">{loc.licenseExpiry}</span>
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span className="text-slate-500 block text-xs uppercase font-bold">License No.</span>
+                                                            <span className="font-mono font-bold text-slate-700">{loc.licenseNumber}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-500 block text-xs uppercase font-bold">Body</span>
+                                                            <span className="font-bold text-slate-700">{loc.licensingBody}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-slate-500 block text-xs uppercase font-bold">Expires</span>
+                                                            <span className="font-mono font-bold text-slate-700">{loc.licenseExpiry}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ) : isLicenseExpired(loc.licenseExpiry) ? (
-                                            <div className="text-center py-4">
-                                                <div className="text-red-600 font-bold mb-2">⚠️ License Expired</div>
-                                                <p className="text-sm text-slate-500 mb-4">Please update your license to continue operations.</p>
-                                                <button
-                                                    onClick={() => {
-                                                        setVerificationData({
-                                                            licenseNumber: loc.licenseNumber || '',
-                                                            licensingBody: loc.licensingBody || '',
-                                                            expiryDate: ''
-                                                        });
-                                                    }}
-                                                    className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-red-700"
-                                                >
-                                                    Renew License
-                                                </button>
-                                            </div>
-                                        ) : loc.status === 'Pending' ? (
-                                            <div className="text-center py-4">
-                                                <div className="text-amber-600 font-bold mb-2">⏳ Verification in Progress</div>
-                                                <p className="text-sm text-slate-500">Your documents are under review. This usually takes 24-48 hours.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                <p className="text-xs text-slate-500 mb-2">Submit your facility license to unlock full features.</p>
+                                            ) : isLicenseExpired(loc.licenseExpiry) ? (
+                                                <div className="text-center py-4">
+                                                    <div className="text-red-600 font-bold mb-2">⚠️ License Expired</div>
+                                                    <p className="text-sm text-slate-500 mb-4">Please update your license to continue operations.</p>
+                                                    <button
+                                                        onClick={() => {
+                                                            setVerificationData({
+                                                                licenseNumber: loc.licenseNumber || '',
+                                                                licensingBody: loc.licensingBody || '',
+                                                                expiryDate: ''
+                                                            });
+                                                        }}
+                                                        className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-red-700"
+                                                    >
+                                                        Renew License
+                                                    </button>
+                                                </div>
+                                            ) : loc.status === 'Pending' ? (
+                                                <div className="text-center py-4">
+                                                    <div className="text-amber-600 font-bold mb-2">⏳ Verification in Progress</div>
+                                                    <p className="text-sm text-slate-500">Your documents are under review. This usually takes 24-48 hours.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    <p className="text-xs text-slate-500 mb-2">Submit your facility license to unlock full features.</p>
 
-                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1">License Number *</label>
+                                                            <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                                                                value={verificationData.licenseNumber} onChange={e => setVerificationData({ ...verificationData, licenseNumber: e.target.value })}
+                                                                placeholder="e.g., KMPDB-12345"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-600 mb-1">Licensing Body *</label>
+                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                                                                value={verificationData.licensingBody} onChange={e => setVerificationData({ ...verificationData, licensingBody: e.target.value })}
+                                                            >
+                                                                <option value="">Select Body</option>
+                                                                <option value="KMPDB">KMPDB</option>
+                                                                <option value="NCK">NCK</option>
+                                                                <option value="PPB">PPB</option>
+                                                                <option value="MOH">MOH</option>
+                                                                <option value="Other">Other</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                     <div>
-                                                        <label className="block text-xs font-bold text-slate-600 mb-1">License Number *</label>
-                                                        <input type="text" className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
-                                                            value={verificationData.licenseNumber} onChange={e => setVerificationData({ ...verificationData, licenseNumber: e.target.value })}
-                                                            placeholder="e.g., KMPDB-12345"
+                                                        <DateInput
+                                                            label="Expiry Date"
+                                                            required
+                                                            value={verificationData.expiryDate}
+                                                            onChange={(value) => setVerificationData({ ...verificationData, expiryDate: value })}
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-600 mb-1">Licensing Body *</label>
-                                                        <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
-                                                            value={verificationData.licensingBody} onChange={e => setVerificationData({ ...verificationData, licensingBody: e.target.value })}
+
+                                                    <div className="flex gap-3 mt-4">
+                                                        <button className="flex-1 bg-white border border-slate-300 text-slate-700 text-xs font-bold py-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-2">
+                                                            <span>📤</span> Upload Document
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleVerificationSubmit(loc.id)}
+                                                            disabled={submittingVerification === loc.id}
+                                                            className="flex-1 bg-[#1a2e35] text-[#4fd1c5] text-xs font-bold py-2.5 rounded-lg hover:bg-[#152428] shadow-sm disabled:opacity-50 transition-colors"
                                                         >
-                                                            <option value="">Select Body</option>
-                                                            <option value="KMPDB">KMPDB</option>
-                                                            <option value="NCK">NCK</option>
-                                                            <option value="PPB">PPB</option>
-                                                            <option value="MOH">MOH</option>
-                                                            <option value="Other">Other</option>
-                                                        </select>
+                                                            {submittingVerification === loc.id ? 'Submitting...' : 'Submit for Verification'}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <DateInput
-                                                        label="Expiry Date"
-                                                        required
-                                                        value={verificationData.expiryDate}
-                                                        onChange={(value) => setVerificationData({ ...verificationData, expiryDate: value })}
-                                                    />
-                                                </div>
-
-                                                <div className="flex gap-3 mt-4">
-                                                    <button className="flex-1 bg-white border border-slate-300 text-slate-700 text-xs font-bold py-2.5 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-2">
-                                                        <span>📤</span> Upload Document
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleVerificationSubmit(loc.id)}
-                                                        disabled={submittingVerification === loc.id}
-                                                        className="flex-1 bg-[#1a2e35] text-[#4fd1c5] text-xs font-bold py-2.5 rounded-lg hover:bg-[#152428] shadow-sm disabled:opacity-50 transition-colors"
-                                                    >
-                                                        {submittingVerification === loc.id ? 'Submitting...' : 'Submit for Verification'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        });
+                    })()}
                 </div>
             )}
 

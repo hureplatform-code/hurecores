@@ -482,9 +482,71 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         setShowEditModal(true);
     };
 
+    // Handle saving ONLY credentials (license etc) without closing modal
+    const handleUpdateCredentials = async () => {
+        if (!selectedStaff || !user?.organizationId) return;
+
+        // Basic validation for license fields if license type is selected
+        if (formData.licenseType && (!formData.licenseNumber || !formData.licenseExpiry)) {
+            alert('Please fill in License Number and Expiry Date');
+            return;
+        }
+
+        try {
+            let licenseDocUrl = selectedStaff.license?.documentUrl || '';
+            if (licenseFile) {
+                const uploadResult = await storageService.uploadFile(
+                    licenseFile,
+                    `organizations/${user.organizationId}/staff-licenses/${Date.now()}_${licenseFile.name}`
+                );
+                if (uploadResult.success && uploadResult.url) {
+                    licenseDocUrl = uploadResult.url;
+                } else {
+                    alert('Failed to upload license document');
+                    return;
+                }
+            }
+
+            // Build the license object
+            const licenseData = formData.licenseType ? {
+                type: formData.licenseType,
+                number: formData.licenseNumber || '',
+                authority: formData.licenseAuthority || '',
+                expiryDate: formData.licenseExpiry || '',
+                verificationStatus: selectedStaff.license?.verificationStatus || 'Pending',
+                issuedDate: selectedStaff.license?.issuedDate || '',
+                documentUrl: licenseDocUrl
+            } : null;
+
+            const result = await staffService.update(selectedStaff.id, {
+                license: licenseData
+            }, user.organizationId);
+
+            if (result.success) {
+                alert('Credentials updated successfully!');
+                loadData(); // Refresh data in background
+            } else {
+                alert(result.error || 'Failed to update credentials');
+            }
+        } catch (err: any) {
+            console.error('Update credentials error:', err);
+            alert('An error occurred while updating credentials');
+        }
+    };
+
+
     const handleUpdateStaff = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedStaff || !user?.organizationId) return;
+        console.log('Update Staff clicked', { selectedStaff, orgId: user?.organizationId });
+
+        if (!selectedStaff) {
+            console.error('No staff selected');
+            return;
+        }
+        if (!user?.organizationId) {
+            setError('Organization ID missing. Please reload.');
+            return;
+        }
 
         setError('');
 
@@ -655,7 +717,20 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         return staff.filter(s => {
             // Global Filter: Location (Apply to ALL tabs)
             const isAllLocations = !selectedLocationId || selectedLocationId === 'all';
-            if (!isAllLocations && s.locationId !== selectedLocationId) return false;
+
+            if (!isAllLocations) {
+                // Precise match
+                if (s.locationId === selectedLocationId) {
+                    // match
+                }
+                // Fallback: If staff has NO location, and the org only has 1 location, and we selected that location -> show them
+                // This covers cases where staff created before location feature or missed selection in single-loc org
+                else if (!s.locationId && locations.length === 1 && locations[0].id === selectedLocationId) {
+                    // match fallback
+                } else {
+                    return false;
+                }
+            }
 
             // Always exclude archived staff
             if (s.staffStatus === 'Archived') return false;
@@ -675,7 +750,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
 
             return true;
         });
-    }, [staff, selectedLocationId, staffTab, showExpiredOnly]);
+    }, [staff, selectedLocationId, staffTab, showExpiredOnly, locations]);
 
     // Count inactive staff for badge
     const inactiveCount = React.useMemo(() => {
@@ -1232,24 +1307,41 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                             <p className="text-xs text-slate-400 mt-0.5">Upload PDF or Image (Max 5MB)</p>
                                                         </div>
                                                     </div>
+
+                                                    {showEditModal && selectedStaff && (
+                                                        <div className="flex justify-end mt-3 border-t border-blue-100 pt-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleUpdateCredentials}
+                                                                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition"
+                                                            >
+                                                                Update Credentials
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </details>
 
-                                            {/* Leave Allocations - Edit Mode Only - Right after Professional Credentials */}
-                                            {showEditModal && selectedStaff && (
-                                                <details className="bg-green-50 border border-green-200 rounded-xl mt-3">
-                                                    <summary className="p-3 cursor-pointer text-sm font-bold text-green-900 flex justify-between items-center">
-                                                        Leave Allocations
-                                                        <span className="text-xs font-normal text-slate-500">Tap to expand</span>
-                                                    </summary>
-                                                    <div className="p-3 pt-2">
+                                            {/* Leave Allocation - Available in both Add and Edit modes */}
+                                            <details className="bg-green-50 border border-green-200 rounded-xl mt-3">
+                                                <summary className="p-3 cursor-pointer text-sm font-bold text-green-900 flex justify-between items-center">
+                                                    Leave Allocation
+                                                    <span className="text-xs font-normal text-slate-500">Tap to expand</span>
+                                                </summary>
+                                                <div className="p-3 pt-2">
+                                                    {showEditModal && selectedStaff ? (
                                                         <StaffLeaveManager
                                                             staffId={selectedStaff.id}
                                                             organizationId={user?.organizationId || ''}
                                                         />
-                                                    </div>
-                                                </details>
-                                            )}
+                                                    ) : (
+                                                        <div className="text-sm text-slate-600 bg-white rounded-lg p-4 border border-green-100">
+                                                            <p className="font-medium text-slate-700 mb-2">📋 Leave allocation will be available after adding this staff member.</p>
+                                                            <p className="text-xs text-slate-500">Once the staff is added, you can edit their profile to configure leave entitlements.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </details>
 
                                             {/* Compensation fields based on employment type */}
                                             <div className="flex justify-between items-center mt-4 mb-2">
@@ -1317,7 +1409,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                             <div className="flex space-x-3 mt-4 pt-3 border-t border-slate-100">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setShowAddModal(false); resetForm(); }}
+                                                    onClick={() => {
+                                                        setShowAddModal(false);
+                                                        setShowEditModal(false);
+                                                        setSelectedStaff(null);
+                                                        resetForm();
+                                                    }}
                                                     className="flex-1 py-3 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
                                                 >
                                                     Cancel
@@ -1326,7 +1423,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                                     type="submit"
                                                     className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
                                                 >
-                                                    Send Invitation
+                                                    {showEditModal ? 'Update Staff Member' : 'Send Invitation'}
                                                 </button>
                                             </div>
                                         </form>

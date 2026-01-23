@@ -70,7 +70,7 @@ const StaffLeaveManager: React.FC<StaffLeaveManagerProps> = ({ staffId, organiza
 
     return (
         <div className="space-y-4">
-            <h3 className="font-bold text-slate-900 border-b pb-2">Leave Allocations</h3>
+            <h3 className="font-bold text-slate-900 border-b pb-2">Leave Allocation</h3>
 
             {entitlements.length === 0 ? (
                 <p className="text-sm text-slate-500 italic">No leave entitlements set for this staff member.</p>
@@ -140,7 +140,7 @@ const StaffLeaveManager: React.FC<StaffLeaveManagerProps> = ({ staffId, organiza
                                 <div className="flex items-center gap-4 text-sm mt-2">
                                     <div className="flex items-center gap-1.5" title="Total days allocated for this year">
                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                                        <span className="text-slate-600">Total: <span className="font-semibold text-slate-900">{ent.allocatedDays} items</span></span>
+                                        <span className="text-slate-600">Total: <span className="font-semibold text-slate-900">{ent.allocatedDays} days</span></span>
                                     </div>
                                     {(ent.isOverridden) && (
                                         <span className="text-amber-600 text-xs bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
@@ -153,6 +153,15 @@ const StaffLeaveManager: React.FC<StaffLeaveManagerProps> = ({ staffId, organiza
                     ))}
                 </div>
             )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button
+                    onClick={() => loadEntitlements()}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition"
+                >
+                    Update Allocation
+                </button>
+            </div>
         </div>
     );
 };

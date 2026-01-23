@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTrialStatus } from '../../context/TrialContext';
 import { notificationService } from '../../lib/services/notification.service';
-import { billingService } from '../../lib/services/billing.service';
 import type { Organization, Location } from '../../types';
 
 interface Notification {
@@ -32,10 +32,10 @@ const EmployerTopBar: React.FC<EmployerTopBarProps> = ({
     setSidebarOpen
 }) => {
     const { user, logout } = useAuth();
+    const { isTrial, daysRemaining } = useTrialStatus(); // Use context
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [isTrial, setIsTrial] = useState(true);
     const notifRef = useRef<HTMLDivElement>(null);
 
     const planName = organization?.plan || 'Professional';
@@ -44,20 +44,8 @@ const EmployerTopBar: React.FC<EmployerTopBarProps> = ({
     useEffect(() => {
         if (user?.organizationId) {
             loadNotifications();
-            checkSubscriptionStatus();
         }
     }, [user?.organizationId]);
-
-    const checkSubscriptionStatus = async () => {
-        if (!user?.organizationId) return;
-        try {
-            const subscription = await billingService.getSubscription(user.organizationId);
-            setIsTrial(subscription?.status === 'Trial' || !subscription?.status);
-        } catch (error) {
-            console.error('Error checking subscription:', error);
-            setIsTrial(true);
-        }
-    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -127,10 +115,10 @@ const EmployerTopBar: React.FC<EmployerTopBarProps> = ({
                     <h1 className="text-lg font-bold text-[#1a2e35] leading-tight">{orgName}</h1>
                     <div className="flex items-center space-x-2">
                         <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 rounded border ${isTrial
-                                ? 'text-[#2FB7A3] bg-[#2FB7A3]/10 border-[#2FB7A3]/30'
-                                : 'text-[#0f766e] bg-[#e0f2f1] border-[#4fd1c5]/30'
+                            ? 'text-[#2FB7A3] bg-[#2FB7A3]/10 border-[#2FB7A3]/30'
+                            : 'text-[#0f766e] bg-[#e0f2f1] border-[#4fd1c5]/30'
                             }`}>
-                            {planName} {isTrial ? 'Trial Plan' : 'Plan'}
+                            {planName} {isTrial ? `Trial (${daysRemaining} days left)` : 'Plan'}
                         </span>
                     </div>
                 </div>
