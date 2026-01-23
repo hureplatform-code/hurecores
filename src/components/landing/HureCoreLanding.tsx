@@ -282,7 +282,7 @@ export default function HureCoreLanding() {
             <SectionShell id="features" className="!py-12 lg:!py-16">
                 <div className="text-center max-w-3xl mx-auto mb-12">
                     <h2 className="text-base font-bold tracking-widest text-teal-600 uppercase mb-3">features</h2>
-                    <h3 className="text-4xl lg:text-5xl font-extrabold text-slate-900">Everything you need to run a modern workforce</h3>
+                    <h3 className="text-5xl lg:text-6xl font-extrabold text-slate-900">Everything you need to run a modern workforce</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -311,7 +311,7 @@ export default function HureCoreLanding() {
             {/* PRICING */}
             <SectionShell id="pricing" className="bg-slate-50/50">
                 <div className="text-center max-w-4xl mx-auto mb-20 border-b border-slate-200 pb-12">
-                    <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-6 font-display">
+                    <h2 className="text-5xl lg:text-6xl font-extrabold text-slate-900 mb-6 font-display">
                         {content.pricingCtaLine1 || DEFAULT_LANDING_CONTENT.pricingCtaLine1}
                     </h2>
                     <p className="text-xl text-slate-600 leading-relaxed">
@@ -321,7 +321,7 @@ export default function HureCoreLanding() {
 
                 <div className="text-center max-w-3xl mx-auto mb-16">
                     <h2 className="text-sm font-bold tracking-widest text-teal-600 uppercase mb-3">{content.pricingEyebrow || DEFAULT_LANDING_CONTENT.pricingEyebrow}</h2>
-                    <h3 className="text-4xl font-extrabold text-slate-900">{content.pricingTitle || DEFAULT_LANDING_CONTENT.pricingTitle}</h3>
+                    <h3 className="text-5xl lg:text-6xl font-extrabold text-slate-900">{content.pricingTitle || DEFAULT_LANDING_CONTENT.pricingTitle}</h3>
                     <p className="mt-4 text-slate-600 text-lg">{content.pricingNote || DEFAULT_LANDING_CONTENT.pricingNote}</p>
                 </div>
 
