@@ -276,9 +276,16 @@ export default function HureCoreLanding() {
                         </div>
                     </div>
                 </div>
+            </SectionShell>
 
-                {/* BENTO GRID FEATURES */}
-                <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* BENTO GRID FEATURES */}
+            <SectionShell id="features" className="!py-12 lg:!py-16">
+                <div className="text-center max-w-3xl mx-auto mb-12">
+                    <h2 className="text-base font-bold tracking-widest text-teal-600 uppercase mb-3">features</h2>
+                    <h3 className="text-4xl lg:text-5xl font-extrabold text-slate-900">Everything you need to run a modern workforce</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {(content.features?.length ? content.features : DEFAULT_LANDING_CONTENT.features).map((f, i) => (
                         <div
                             key={i}
@@ -303,6 +310,15 @@ export default function HureCoreLanding() {
 
             {/* PRICING */}
             <SectionShell id="pricing" className="bg-slate-50/50">
+                <div className="text-center max-w-4xl mx-auto mb-20 border-b border-slate-200 pb-12">
+                    <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-6 font-display">
+                        {content.pricingCtaLine1 || DEFAULT_LANDING_CONTENT.pricingCtaLine1}
+                    </h2>
+                    <p className="text-xl text-slate-600 leading-relaxed">
+                        {content.pricingCtaLine2 || DEFAULT_LANDING_CONTENT.pricingCtaLine2}
+                    </p>
+                </div>
+
                 <div className="text-center max-w-3xl mx-auto mb-16">
                     <h2 className="text-sm font-bold tracking-widest text-teal-600 uppercase mb-3">{content.pricingEyebrow || DEFAULT_LANDING_CONTENT.pricingEyebrow}</h2>
                     <h3 className="text-4xl font-extrabold text-slate-900">{content.pricingTitle || DEFAULT_LANDING_CONTENT.pricingTitle}</h3>
@@ -361,10 +377,10 @@ export default function HureCoreLanding() {
                         </div>
                     ))}
                 </div>
-            </SectionShell>
+            </SectionShell >
 
             {/* FAQS */}
-            <SectionShell id="faqs">
+            < SectionShell id="faqs" >
                 <div className="grid lg:grid-cols-12 gap-12 items-start">
                     <div className="lg:col-span-4">
                         <h2 className="text-sm font-bold tracking-widest text-teal-600 uppercase mb-3">Support</h2>
@@ -385,10 +401,10 @@ export default function HureCoreLanding() {
                         ))}
                     </div>
                 </div>
-            </SectionShell>
+            </SectionShell >
 
             {/* FOOTER */}
-            <footer className="bg-slate-950 py-16 text-white border-t border-slate-900">
+            < footer className="bg-slate-950 py-16 text-white border-t border-slate-900" >
                 <div className="mx-auto w-full max-w-7xl px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row justify-between items-start gap-12">
                         <div className="max-w-xs">
@@ -403,7 +419,7 @@ export default function HureCoreLanding() {
                             <div>
                                 <h4 className="font-bold text-white mb-6">Product</h4>
                                 <ul className="space-y-4 text-sm text-slate-400">
-                                    <li><button onClick={() => scrollToId("about")} className="hover:text-teal-400 transition-colors">Features</button></li>
+                                    <li><button onClick={() => scrollToId("features")} className="hover:text-teal-400 transition-colors">Features</button></li>
                                     <li><button onClick={() => scrollToId("pricing")} className="hover:text-teal-400 transition-colors">Pricing</button></li>
                                     <li><button onClick={() => scrollToId("faqs")} className="hover:text-teal-400 transition-colors">FAQ</button></li>
                                 </ul>
@@ -423,25 +439,27 @@ export default function HureCoreLanding() {
                         <p>Designed for Healthcare.</p>
                     </div>
                 </div>
-            </footer>
+            </footer >
 
             {/* TOAST */}
-            {toast.open && (
-                <div className="fixed bottom-8 left-1/2 z-50 w-full max-w-sm -translate-x-1/2">
-                    <div className="mx-4 bg-slate-900/90 text-white backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 border border-white/10">
-                        <div>
-                            <div className="font-bold text-sm tracking-wide">{toast.title}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">{toast.body}</div>
+            {
+                toast.open && (
+                    <div className="fixed bottom-8 left-1/2 z-50 w-full max-w-sm -translate-x-1/2">
+                        <div className="mx-4 bg-slate-900/90 text-white backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 border border-white/10">
+                            <div>
+                                <div className="font-bold text-sm tracking-wide">{toast.title}</div>
+                                <div className="text-xs text-slate-400 mt-0.5">{toast.body}</div>
+                            </div>
+                            <button
+                                onClick={() => setToast({ ...toast, open: false })}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <Icon name="check" className="w-4 h-4" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setToast({ ...toast, open: false })}
-                            className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                        >
-                            <Icon name="check" className="w-4 h-4" />
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
