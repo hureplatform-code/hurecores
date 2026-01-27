@@ -173,8 +173,10 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
     const getOrgStatusLabel = (status: string): { label: string; color: string } => {
         const labels: Record<string, { label: string; color: string }> = {
             'Active': { label: 'Approved', color: 'bg-emerald-100 text-emerald-700' },
+            'Approved': { label: 'Approved', color: 'bg-emerald-100 text-emerald-700' },
             'Verified': { label: 'Approved', color: 'bg-emerald-100 text-emerald-700' },
             'Pending': { label: 'Pending Review', color: 'bg-amber-100 text-amber-700' },
+            'Pending Review': { label: 'Pending Review', color: 'bg-amber-100 text-amber-700' },
             'Unverified': { label: 'Required before billing', color: 'bg-slate-100 text-slate-600' },
             'Rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700' },
             'Suspended': { label: 'Suspended', color: 'bg-red-100 text-red-700' }
@@ -216,9 +218,16 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
     console.log('[DEBUG OrgDetails] All locations:', locations.map(l => ({ id: l.id, name: l.name })));
     console.log('[DEBUG OrgDetails] Filtered visibleLocations:', visibleLocations.length, 'items:', visibleLocations.map(l => l.name));
 
-    // Compliance summary - org is verified if 'Verified' (approved) or 'Active' (approved + enabled)
+    // Compliance summary - org is verified if orgStatus OR approvalStatus is 'Verified'/'Approved'/'Active'
+    const orgData = org as any;
+    const isOrgVerified = 
+        orgData?.orgStatus === 'Verified' || 
+        orgData?.orgStatus === 'Active' ||
+        orgData?.approvalStatus === 'Approved' ||
+        orgData?.approvalStatus === 'Active';
+    
     const complianceSummary = {
-        org: org?.orgStatus === 'Verified' || org?.orgStatus === 'Active',
+        org: isOrgVerified,
         facilities: {
             approved: visibleLocations.filter(l => (l.status === 'Verified' || l.status === 'Active') && !(l.licenseExpiry && new Date(l.licenseExpiry) < new Date())).length,
             pending: visibleLocations.filter(l => l.status === 'Pending').length,
@@ -239,16 +248,30 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
 
     if (!org) {
         return (
-            <div className="p-8">
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
-                    <p className="text-slate-600">Unable to load organization details.</p>
+            <div className="p-8 flex items-center justify-center min-h-[400px]">
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 max-w-md text-center">
+                    <div className="text-5xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-bold text-slate-900 mb-2">Unable to Load Data</h2>
+                    <p className="text-slate-600 mb-6">
+                        Could not load organization details. This might be a temporary issue or a permission problem.
+                    </p>
+                    <button
+                        onClick={() => loadData()}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700"
+                    >
+                        Retry
+                    </button>
                 </div>
             </div>
         );
     }
 
     const subStatus = subscription ? getSubscriptionStatus() : { label: 'Trial', color: 'bg-blue-100 text-blue-700' };
-    const orgStatus = org?.orgStatus ? getOrgStatusLabel(org.orgStatus) : { label: 'Not Verified', color: 'bg-slate-100 text-slate-600' };
+    // Check both orgStatus and approvalStatus fields for the status label
+    const effectiveOrgStatus = (org as any)?.approvalStatus || org?.orgStatus;
+    const orgStatus = effectiveOrgStatus 
+        ? getOrgStatusLabel(effectiveOrgStatus) 
+        : { label: 'Not Verified', color: 'bg-slate-100 text-slate-600' };
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">

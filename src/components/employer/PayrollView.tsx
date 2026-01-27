@@ -30,7 +30,7 @@ interface LocumPayoutEntry {
 
 const PayrollView: React.FC = () => {
     const { user } = useAuth();
-    const { canPerformPayouts, isVerified, isLoading: trialLoading } = useTrialStatus(); // Enforce verification check
+    const { canPerformPayouts, isVerified, isLoading: trialLoading, loadError, organization, refreshStatus } = useTrialStatus(); // Enforce verification check
     const [loading, setLoading] = useState(true);
     const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
     const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null);
@@ -62,6 +62,27 @@ const PayrollView: React.FC = () => {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p className="text-slate-600">Loading payroll...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state if organization data failed to load
+    if (loadError || !organization) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-center bg-white rounded-2xl p-8 max-w-md border border-slate-200">
+                    <div className="text-5xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-bold text-slate-900 mb-2">Unable to Load Data</h2>
+                    <p className="text-slate-600 mb-6">
+                        {loadError || 'Could not load organization data. Please try again.'}
+                    </p>
+                    <button
+                        onClick={() => refreshStatus()}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700"
+                    >
+                        Retry
+                    </button>
                 </div>
             </div>
         );

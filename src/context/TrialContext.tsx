@@ -6,6 +6,7 @@ import type { Organization, Subscription } from '../types';
 interface TrialContextType {
     // Status
     isLoading: boolean;
+    loadError: string | null;
     isTrial: boolean;
     isActive: boolean;
     isInactive: boolean;
@@ -44,6 +45,7 @@ export const useTrialStatus = () => {
 export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [subscription, setSubscription] = useState<Subscription | null>(null);
 
@@ -56,18 +58,30 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [user?.organizationId]);
 
     const loadStatus = async () => {
-        if (!user?.organizationId) return;
+        if (!user?.organizationId) {
+            console.warn('[TrialContext] No organizationId on user:', user);
+            return;
+        }
 
+        console.log('[TrialContext] Loading status for org:', user.organizationId);
         setIsLoading(true);
+        setLoadError(null);
         try {
             const [org, sub] = await Promise.all([
                 organizationService.getById(user.organizationId),
                 organizationService.getSubscription(user.organizationId)
             ]);
+            console.log('[TrialContext] Loaded org:', org?.id, 'orgStatus:', org?.orgStatus);
+            console.log('[TrialContext] Loaded subscription:', sub?.status);
             setOrganization(org);
             setSubscription(sub);
-        } catch (err) {
-            console.error('Error loading trial status:', err);
+            if (!org) {
+                console.warn('[TrialContext] Organization not found for ID:', user.organizationId);
+                setLoadError('Organization data not found');
+            }
+        } catch (err: any) {
+            console.error('[TrialContext] Error loading trial status:', err);
+            setLoadError(err?.message || 'Failed to load organization data');
         } finally {
             setIsLoading(false);
         }
@@ -122,8 +136,25 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isTrial = subscription?.status === 'Trial' || (!subscription?.status && !trialInfo.isExpired);
     const isActive = subscription?.status === 'Active';
     const isInactive = trialInfo.isExpired && !isActive;
-    // Organization is verified if orgStatus is 'Verified' (approved) or 'Active' (approved + enabled)
-    const isVerified = organization?.orgStatus === 'Verified' || organization?.orgStatus === 'Active';
+    // Organization is verified if orgStatus OR approvalStatus is 'Verified' or 'Active'
+    // (handles both old orgStatus field and new approvalStatus field)
+    const orgData = organization as any; // Allow checking both fields
+    const isVerified = 
+        orgData?.orgStatus === 'Verified' || 
+        orgData?.orgStatus === 'Active' ||
+        orgData?.approvalStatus === 'Approved' ||
+        orgData?.approvalStatus === 'Active';
+
+    // Debug logging
+    console.log('[TrialContext] Status check:', {
+        orgStatus: orgData?.orgStatus,
+        approvalStatus: orgData?.approvalStatus,
+        isVerified,
+        isTrial,
+        isActive,
+        isLoading,
+        loadError
+    });
 
     // Access control rules
     // During trial (Day 1-10): Full operational access, but payout/invoice/export blocked
@@ -137,6 +168,7 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const value: TrialContextType = {
         isLoading,
+        loadError,
         isTrial,
         isActive,
         isInactive,
