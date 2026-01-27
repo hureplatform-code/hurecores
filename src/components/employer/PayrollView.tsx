@@ -30,7 +30,7 @@ interface LocumPayoutEntry {
 
 const PayrollView: React.FC = () => {
     const { user } = useAuth();
-    const { canPerformPayouts, isVerified } = useTrialStatus(); // Enforce verification check
+    const { canPerformPayouts, isVerified, isLoading: trialLoading } = useTrialStatus(); // Enforce verification check
     const [loading, setLoading] = useState(true);
     const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
     const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null);
@@ -54,6 +54,18 @@ const PayrollView: React.FC = () => {
 
     const [newAllowance, setNewAllowance] = useState({ amount: 0, notes: '' });
     const [editingAllowanceIndex, setEditingAllowanceIndex] = useState<number | null>(null);
+
+    // Show loading spinner while trial context is loading
+    if (trialLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600">Loading payroll...</p>
+                </div>
+            </div>
+        );
+    }
 
     // CRITICAL: Block entire payroll access until verified
     if (!isVerified) {

@@ -23,7 +23,14 @@ export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export type BillingEventType = 'TRIAL_START' | 'PAYMENT_RECEIVED' | 'SUSPENSION' | 'REACTIVATION' | 'PLAN_CHANGE';
 
-export type VerificationStatus = 'Verified' | 'Pending' | 'Unverified' | 'Rejected';
+// VerificationStatus includes all possible organization statuses:
+// - Pending: Initial state when organization signs up
+// - Unverified: Organization hasn't submitted verification documents
+// - Verified: Super Admin has approved the verification (approved but not yet enabled)
+// - Active: Organization is fully enabled and operational
+// - Suspended: Organization is temporarily disabled
+// - Rejected: Verification was rejected
+export type VerificationStatus = 'Verified' | 'Pending' | 'Unverified' | 'Rejected' | 'Active' | 'Suspended';
 
 export type AccountStatus = 'Active' | 'Under Review' | 'Suspended';
 
