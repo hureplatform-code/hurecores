@@ -170,14 +170,16 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
     };
 
     // Status helpers
-    const getOrgStatusLabel = (status: VerificationStatus): { label: string; color: string } => {
-        const labels: Record<VerificationStatus, { label: string; color: string }> = {
+    const getOrgStatusLabel = (status: string): { label: string; color: string } => {
+        const labels: Record<string, { label: string; color: string }> = {
+            'Active': { label: 'Approved', color: 'bg-emerald-100 text-emerald-700' },
             'Verified': { label: 'Approved', color: 'bg-emerald-100 text-emerald-700' },
             'Pending': { label: 'Pending Review', color: 'bg-amber-100 text-amber-700' },
             'Unverified': { label: 'Required before billing', color: 'bg-slate-100 text-slate-600' },
-            'Rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700' }
+            'Rejected': { label: 'Rejected', color: 'bg-red-100 text-red-700' },
+            'Suspended': { label: 'Suspended', color: 'bg-red-100 text-red-700' }
         };
-        return labels[status];
+        return labels[status] || { label: 'Not Verified', color: 'bg-slate-100 text-slate-600' };
     };
 
     const getFacilityStatus = (location: Location): { status: string; color: string } => {
