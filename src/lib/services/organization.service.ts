@@ -235,6 +235,7 @@ export const organizationService = {
       kraPin: input.kraPin,
       businessRegistrationDocUrl: input.documentUrl,
       orgStatus: 'Pending' as VerificationStatus,
+      approvalStatus: 'Pending Review', // Sync approvalStatus
       updatedAt: serverTimestamp()
     });
 

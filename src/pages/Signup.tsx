@@ -261,6 +261,7 @@ const Signup: React.FC = () => {
         city: formData.orgCity || null,
         country: formData.orgCountry,
         orgStatus: 'Pending',
+        approvalStatus: 'Pending Review', // New unified approval status field
         accountStatus: 'Under Review',
         plan: formData.plan,
         maxLocations: planLimits.maxLocations,

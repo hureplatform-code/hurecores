@@ -36,14 +36,23 @@ export const adminService = {
         const orgsSnapshot = await getDocs(collections.organizations());
         const totalOrganizations = orgsSnapshot.size;
 
-        // Count verified organizations
+        // Count verified organizations - check both approvalStatus and orgStatus for compatibility
         let verifiedOrganizations = 0;
         let planDistribution: Record<string, number> = {};
 
         orgsSnapshot.forEach(doc => {
             const data = doc.data();
-            // Count both 'Verified' (approved) and 'Active' (approved + enabled) as verified
-            if (data.orgStatus === 'Verified' || data.orgStatus === 'Active') {
+            // Check approvalStatus first (new field), then fallback to orgStatus (legacy)
+            const approvalStatus = data.approvalStatus;
+            const orgStatus = data.orgStatus;
+            
+            const isVerifiedOrActive = 
+                approvalStatus === 'Active' || 
+                approvalStatus === 'Approved' ||
+                orgStatus === 'Verified' || 
+                orgStatus === 'Active';
+            
+            if (isVerifiedOrActive) {
                 verifiedOrganizations++;
             }
             const plan = data.plan || 'Essential';
@@ -190,6 +199,7 @@ export const adminService = {
                 const verifiedDate = new Date().toISOString();
                 await updateDoc(docs.organization(verification.organizationId), {
                     orgStatus: 'Verified' as VerificationStatus,
+                    approvalStatus: 'Approved', // Sync approvalStatus with orgStatus
                     verifiedAt: verifiedDate,
                     approvedAt: verifiedDate, // For trial calculation
                     updatedAt: serverTimestamp()
@@ -197,6 +207,7 @@ export const adminService = {
             } else if (verification.type === 'FACILITY' && verification.locationId && verification.organizationId) {
                 await updateDoc(docs.location(verification.organizationId, verification.locationId), {
                     status: 'Verified' as VerificationStatus,
+                    verificationStatus: 'Approved', // Sync verificationStatus
                     verifiedAt: new Date().toISOString(),
                     updatedAt: serverTimestamp()
                 });
@@ -242,12 +253,14 @@ export const adminService = {
             if (verification.type === 'ORG' && verification.organizationId) {
                 await updateDoc(docs.organization(verification.organizationId), {
                     orgStatus: 'Rejected' as VerificationStatus,
+                    approvalStatus: 'Rejected', // Sync approvalStatus with orgStatus
                     rejectionReason: reason,
                     updatedAt: serverTimestamp()
                 });
             } else if (verification.type === 'FACILITY' && verification.locationId && verification.organizationId) {
                 await updateDoc(docs.location(verification.organizationId, verification.locationId), {
                     status: 'Rejected' as VerificationStatus,
+                    verificationStatus: 'Rejected', // Sync verificationStatus
                     rejectionReason: reason,
                     updatedAt: serverTimestamp()
                 });
@@ -304,8 +317,17 @@ export const adminService = {
      * Update organization account status
      */
     async updateAccountStatus(organizationId: string, status: 'Active' | 'Suspended' | 'Inactive') {
+        // Map account status to approval status for consistency
+        const approvalStatusMap: Record<string, string> = {
+            'Active': 'Active',
+            'Suspended': 'Suspended',
+            'Inactive': 'Suspended'
+        };
+        
         await updateDoc(docs.organization(organizationId), {
             accountStatus: status,
+            orgStatus: status,
+            approvalStatus: approvalStatusMap[status] || status,
             updatedAt: serverTimestamp()
         });
 

@@ -112,23 +112,38 @@ const SuperAdminDashboard: React.FC = () => {
         loadData();
     }, [user]);
 
+    // Helper function to determine effective approval status (matching ApprovalsManager logic)
+    const getEffectiveApprovalStatus = (data: any): string => {
+        // If approvalStatus field exists, use it (takes precedence)
+        if (data.approvalStatus) {
+            return data.approvalStatus;
+        }
+        // Otherwise, map legacy orgStatus to approvalStatus
+        if (data.orgStatus === 'Active') return 'Active';
+        if (data.orgStatus === 'Verified') return 'Approved';
+        if (data.orgStatus === 'Suspended') return 'Suspended';
+        if (data.orgStatus === 'Rejected') return 'Rejected';
+        if (data.orgStatus === 'Pending') return 'Pending Review';
+        return 'Pending Review'; // Default
+    };
+
     const loadData = async () => {
         setLoading(true);
         try {
-            // 1. Get Pending Organizations
-            const pendingQuery = query(
-                collection(db, 'organizations'),
-                where('orgStatus', '==', 'Pending')
-            );
-            const pendingSnap = await getDocs(pendingQuery);
-            const pending = pendingSnap.docs.map(d => ({ id: d.id, ...d.data() } as Organization));
-            setPendingOrgs(pending);
-
-            // 2. Get All Clinics
+            // 1. Get All Clinics first (we'll derive pending from this)
             const allQuery = query(collection(db, 'organizations'), orderBy('createdAt', 'desc'));
             const allSnap = await getDocs(allQuery);
             const all = allSnap.docs.map(d => ({ id: d.id, ...d.data() } as Organization));
             setAllClinics(all);
+
+            // 2. Calculate pending using the same logic as ApprovalsManager
+            // This ensures the count matches what's shown in the Approvals tab
+            const pending = allSnap.docs.filter(d => {
+                const data = d.data();
+                const effectiveStatus = getEffectiveApprovalStatus(data);
+                return effectiveStatus === 'Pending Review';
+            }).map(d => ({ id: d.id, ...d.data() } as Organization));
+            setPendingOrgs(pending);
 
             // 3. Get All Users
             const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
@@ -142,8 +157,12 @@ const SuperAdminDashboard: React.FC = () => {
             const logs = auditSnap.docs.slice(0, 50).map(d => ({ id: d.id, ...d.data() } as AuditLogEntry));
             setAuditLogs(logs);
 
-            // 5. Calculate Stats
-            const activeOrgs = all.filter(o => o.orgStatus === 'Active').length;
+            // 5. Calculate Stats - use effective status for accurate counts
+            const activeOrgs = allSnap.docs.filter(d => {
+                const data = d.data();
+                const effectiveStatus = getEffectiveApprovalStatus(data);
+                return effectiveStatus === 'Active';
+            }).length;
             const planPrices: Record<string, number> = { Essential: 2500, Professional: 5000, Enterprise: 15000 };
             const revenue = all.reduce((sum, org) => sum + (planPrices[org.plan] || 0), 0);
 
@@ -169,6 +188,7 @@ const SuperAdminDashboard: React.FC = () => {
         try {
             await updateDoc(doc(db, 'organizations', orgId), {
                 orgStatus: approve ? 'Active' : 'Suspended',
+                approvalStatus: approve ? 'Active' : 'Rejected',
                 accountStatus: approve ? 'Active' : 'Rejected'
             });
 
@@ -183,7 +203,10 @@ const SuperAdminDashboard: React.FC = () => {
     const handleSuspendOrg = async (orgId: string) => {
         if (!confirm('Suspend this organization? Users will lose access.')) return;
         try {
-            await updateDoc(doc(db, 'organizations', orgId), { orgStatus: 'Suspended' });
+            await updateDoc(doc(db, 'organizations', orgId), { 
+                orgStatus: 'Suspended',
+                approvalStatus: 'Suspended'
+            });
             loadData();
         } catch (error) {
             alert('Failed to suspend organization');
@@ -193,7 +216,10 @@ const SuperAdminDashboard: React.FC = () => {
     const handleReactivateOrg = async (orgId: string) => {
         if (!confirm('Reactivate this organization?')) return;
         try {
-            await updateDoc(doc(db, 'organizations', orgId), { orgStatus: 'Active' });
+            await updateDoc(doc(db, 'organizations', orgId), { 
+                orgStatus: 'Active',
+                approvalStatus: 'Active'
+            });
             loadData();
         } catch (error) {
             alert('Failed to reactivate organization');
@@ -393,7 +419,7 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm font-semibold text-slate-700">Trials Expiring</span>
                                     </div>
                                     <div className="text-3xl font-bold text-slate-900">
-                                        {allClinics.filter(c => c.orgStatus === 'Pending' || c.plan === 'Trial').length}
+                                        {allClinics.filter(c => c.plan === 'Trial' || (getEffectiveApprovalStatus(c) === 'Approved')).length}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">Trials ending soon</div>
                                     <div className="text-xs font-semibold text-amber-600 mt-3 group-hover:underline">Review →</div>
@@ -409,7 +435,10 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm font-semibold text-slate-700">Flagged Clinics</span>
                                     </div>
                                     <div className="text-3xl font-bold text-slate-900">
-                                        {allClinics.filter(c => c.orgStatus === 'Suspended' || c.orgStatus === 'Rejected').length}
+                                        {allClinics.filter(c => {
+                                            const status = getEffectiveApprovalStatus(c);
+                                            return status === 'Suspended' || status === 'Rejected';
+                                        }).length}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">Suspended or reported</div>
                                     <div className="text-xs font-semibold text-orange-600 mt-3 group-hover:underline">Review →</div>
@@ -431,7 +460,10 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm font-semibold text-slate-700">Active Clinics</span>
                                     </div>
                                     <div className="text-3xl font-bold text-slate-900">
-                                        {allClinics.filter(c => c.orgStatus === 'Active' || c.orgStatus === 'Verified').length}
+                                        {allClinics.filter(c => {
+                                            const status = getEffectiveApprovalStatus(c);
+                                            return status === 'Active' || status === 'Approved';
+                                        }).length}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">Currently live and operational</div>
                                     <div className="text-xs font-semibold text-teal-600 mt-3 group-hover:underline">Review →</div>
@@ -461,7 +493,7 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm font-semibold text-slate-700">Trials Running</span>
                                     </div>
                                     <div className="text-3xl font-bold text-slate-900">
-                                        {allClinics.filter(c => c.plan === 'Trial' || c.orgStatus === 'Unverified').length}
+                                        {allClinics.filter(c => c.plan === 'Trial' || getEffectiveApprovalStatus(c) === 'Approved').length}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">Clinics in trial period</div>
                                     <div className="text-xs font-semibold text-blue-600 mt-3 group-hover:underline">Review →</div>
@@ -477,7 +509,7 @@ const SuperAdminDashboard: React.FC = () => {
                                         <span className="text-sm font-semibold text-slate-700">Suspended Clinics</span>
                                     </div>
                                     <div className="text-3xl font-bold text-slate-900">
-                                        {allClinics.filter(c => c.orgStatus === 'Suspended').length}
+                                        {allClinics.filter(c => getEffectiveApprovalStatus(c) === 'Suspended').length}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">Currently suspended or flagged</div>
                                     <div className="text-xs font-semibold text-red-600 mt-3 group-hover:underline">Review →</div>
