@@ -9,6 +9,8 @@ export const storageService = {
      */
     async uploadFile(file: File, path: string, bucket: string = 'documents'): Promise<{ success: boolean; url?: string; error?: string }> {
         try {
+            console.log('Starting file upload:', { fileName: file.name, fileSize: file.size, path, bucket });
+            
             // 1. Upload file
             const { data, error } = await supabase
                 .storage
@@ -19,8 +21,17 @@ export const storageService = {
                 });
 
             if (error) {
-                console.error('Supabase upload error:', error);
-                return { success: false, error: error.message };
+                console.error('Supabase upload error:', error, 'Error code:', (error as any)?.statusCode);
+                // Provide more helpful error messages
+                let errorMessage = error.message;
+                if (error.message?.includes('not allowed') || error.message?.includes('policy')) {
+                    errorMessage = 'Upload permission denied. Please contact support.';
+                } else if (error.message?.includes('Payload too large') || error.message?.includes('size')) {
+                    errorMessage = 'File is too large. Maximum size is 50MB.';
+                } else if (error.message?.includes('Invalid')) {
+                    errorMessage = 'Invalid file type. Please upload PDF, JPG, or PNG files.';
+                }
+                return { success: false, error: errorMessage };
             }
 
             // 2. Get Public URL

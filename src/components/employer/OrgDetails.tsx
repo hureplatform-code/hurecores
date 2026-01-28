@@ -90,8 +90,9 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
             const url = await handleFileUpload(file, path);
             setOrgForm(prev => ({ ...prev, documentUrl: url }));
             setSuccess('Document uploaded successfully');
-        } catch (error) {
-            setError('Failed to upload document');
+        } catch (error: any) {
+            console.error('Document upload error:', error);
+            setError(error?.message || 'Failed to upload document');
         } finally {
             setUploading(false);
         }
@@ -107,8 +108,9 @@ const OrgDetails: React.FC<{ selectedLocationId?: string }> = ({ selectedLocatio
             const url = await handleFileUpload(file, path);
             setFacilityForm(prev => ({ ...prev, documentUrl: url }));
             setSuccess('License document uploaded');
-        } catch (error) {
-            setError('Failed to upload document');
+        } catch (error: any) {
+            console.error('Facility document upload error:', error);
+            setError(error?.message || 'Failed to upload document');
         } finally {
             setUploading(false);
         }

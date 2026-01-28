@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { staffService, policyDocumentsService } from '../../lib/services';
-import type { Profile, PolicyDocument, DocumentAcknowledgement } from '../../types';
+import { staffService, policyDocumentsService, organizationService } from '../../lib/services';
+import { storageService } from '../../lib/services/storage.service';
+import type { Profile, PolicyDocument, DocumentAcknowledgement, Location, Organization } from '../../types';
 
 const MyProfile: React.FC = () => {
     const { user } = useAuth();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // Organization & Location State
+    const [organization, setOrganization] = useState<Organization | null>(null);
+    const [location, setLocation] = useState<Location | null>(null);
 
     // Edit State
     const [isEditing, setIsEditing] = useState(false);
@@ -30,6 +35,17 @@ const MyProfile: React.FC = () => {
     const [acknowledgements, setAcknowledgements] = useState<DocumentAcknowledgement[]>([]);
     const [loadingDocs, setLoadingDocs] = useState(false);
 
+    // Add Credentials Modal State
+    const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+    const [credentialsForm, setCredentialsForm] = useState({
+        licenseType: '',
+        licenseNumber: '',
+        issuingAuthority: '',
+        expiryDate: '',
+        documentFile: null as File | null
+    });
+    const [submittingCredentials, setSubmittingCredentials] = useState(false);
+
     useEffect(() => {
         if (user?.id) {
             loadProfile();
@@ -51,6 +67,17 @@ const MyProfile: React.FC = () => {
                     emergencyContactName: data.emergencyContactName || '',
                     emergencyContactPhone: data.emergencyContactPhone || ''
                 });
+
+                // Load organization and location data
+                if (data.organizationId) {
+                    const orgData = await organizationService.getById(data.organizationId);
+                    setOrganization(orgData);
+
+                    if (data.locationId) {
+                        const locationData = await organizationService.getLocation(data.organizationId, data.locationId);
+                        setLocation(locationData);
+                    }
+                }
             }
         } catch (error) {
             console.error("Error fetching profile:", error);
@@ -138,6 +165,62 @@ const MyProfile: React.FC = () => {
         } catch (error) {
             console.error('Error acknowledging document:', error);
             alert('Failed to acknowledge document');
+        }
+    };
+
+    const handleSubmitCredentials = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user?.id || !user?.organizationId) return;
+
+        // Validate form
+        if (!credentialsForm.licenseType || !credentialsForm.licenseNumber || 
+            !credentialsForm.issuingAuthority || !credentialsForm.expiryDate) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        setSubmittingCredentials(true);
+        try {
+            let documentUrl = '';
+
+            // Upload document if provided
+            if (credentialsForm.documentFile) {
+                const path = `staff/${user.id}/credentials/license-${Date.now()}.${credentialsForm.documentFile.name.split('.').pop()}`;
+                const uploadResult = await storageService.uploadFile(credentialsForm.documentFile, path, 'documents');
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.error || 'Failed to upload document');
+                }
+                documentUrl = uploadResult.url || '';
+            }
+
+            // Update staff profile with license info - sends to employer for review
+            await staffService.update(user.id, {
+                license: {
+                    type: credentialsForm.licenseType,
+                    number: credentialsForm.licenseNumber,
+                    authority: credentialsForm.issuingAuthority,
+                    expiryDate: credentialsForm.expiryDate,
+                    documentUrl: documentUrl,
+                    verificationStatus: 'Pending' // Employer needs to verify
+                }
+            });
+
+            // Reset form and close modal
+            setCredentialsForm({
+                licenseType: '',
+                licenseNumber: '',
+                issuingAuthority: '',
+                expiryDate: '',
+                documentFile: null
+            });
+            setShowCredentialsModal(false);
+            alert('Credentials submitted successfully! Your employer will review and approve them.');
+            loadProfile(); // Refresh to show updated data
+        } catch (error: any) {
+            console.error('Error submitting credentials:', error);
+            alert(error.message || 'Failed to submit credentials');
+        } finally {
+            setSubmittingCredentials(false);
         }
     };
 
@@ -269,7 +352,12 @@ const MyProfile: React.FC = () => {
                             ) : (
                                 <div className="text-center py-8">
                                     <p className="text-slate-500 mb-4">No professional license information added.</p>
-                                    <button className="text-blue-600 font-semibold hover:underline">Add Credentials</button>
+                                    <button 
+                                        onClick={() => setShowCredentialsModal(true)}
+                                        className="text-blue-600 font-semibold hover:underline"
+                                    >
+                                        Add Credentials
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -288,24 +376,30 @@ const MyProfile: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned Organization</label>
-                                    <div className="font-semibold text-slate-900">Rusinga Nursing Home</div>
+                                    <div className="font-semibold text-slate-900">{organization?.name || 'Not assigned'}</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned Location(s)</label>
-                                    <div className="font-semibold text-slate-900">Main Facility</div>
+                                    <div className="font-semibold text-slate-900">{location?.name || 'Not assigned'}</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assigned Role</label>
-                                    <div className="font-semibold text-slate-900">{safeProfile.jobTitle || 'Nurse'} (Full-Time)</div>
+                                    <div className="font-semibold text-slate-900">{safeProfile.jobTitle || 'Not set'} ({safeProfile.employmentType || 'Full-Time'})</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Verification Status</label>
-                                    <div className="font-semibold text-emerald-700 font-bold">APPROVED ✓</div>
+                                    <div className={`font-semibold font-bold ${practiceApproval?.organizationApproved ? 'text-emerald-700' : 'text-amber-600'}`}>
+                                        {practiceApproval?.organizationApproved ? 'APPROVED ✓' : 'PENDING'}
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Verified On</label>
-                                    <div className="font-semibold text-slate-900">04 January 2026</div>
-                                </div>
+                                {practiceApproval?.approvedAt && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Verified On</label>
+                                        <div className="font-semibold text-slate-900">
+                                            {new Date(practiceApproval.approvedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -506,6 +600,120 @@ const MyProfile: React.FC = () => {
 
                 </div>
             </div>
+
+            {/* Add Credentials Modal */}
+            {showCredentialsModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-slate-900">Add Professional Credentials</h3>
+                            <button 
+                                onClick={() => setShowCredentialsModal(false)}
+                                className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmitCredentials} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    License/Certificate Type <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={credentialsForm.licenseType}
+                                    onChange={(e) => setCredentialsForm(prev => ({ ...prev, licenseType: e.target.value }))}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-transparent"
+                                    required
+                                >
+                                    <option value="">Select type...</option>
+                                    <option value="Nursing License">Nursing License</option>
+                                    <option value="Medical License">Medical License</option>
+                                    <option value="Pharmacy License">Pharmacy License</option>
+                                    <option value="Lab Technician Certificate">Lab Technician Certificate</option>
+                                    <option value="Clinical Officer License">Clinical Officer License</option>
+                                    <option value="Other Professional Certificate">Other Professional Certificate</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    License/Certificate Number <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={credentialsForm.licenseNumber}
+                                    onChange={(e) => setCredentialsForm(prev => ({ ...prev, licenseNumber: e.target.value }))}
+                                    placeholder="e.g., KMPDB123456"
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    Issuing Organization <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={credentialsForm.issuingAuthority}
+                                    onChange={(e) => setCredentialsForm(prev => ({ ...prev, issuingAuthority: e.target.value }))}
+                                    placeholder="e.g., Kenya Medical Practitioners and Dentists Board"
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    Expiry Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={credentialsForm.expiryDate}
+                                    onChange={(e) => setCredentialsForm(prev => ({ ...prev, expiryDate: e.target.value }))}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                                    Upload License Document
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={(e) => setCredentialsForm(prev => ({ ...prev, documentFile: e.target.files?.[0] || null }))}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0f766e] focus:border-transparent file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#0f766e] file:text-white hover:file:bg-[#115e59]"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">PDF, JPG, or PNG (max 10MB)</p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+                                <strong>Note:</strong> Your credentials will be sent to your employer for verification. 
+                                You will be notified once they have been reviewed and approved.
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCredentialsModal(false)}
+                                    className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submittingCredentials}
+                                    className="flex-1 px-4 py-2.5 bg-[#0f766e] text-white rounded-xl font-semibold hover:bg-[#115e59] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {submittingCredentials ? 'Submitting...' : 'Submit for Verification'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
