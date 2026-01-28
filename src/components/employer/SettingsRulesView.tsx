@@ -182,7 +182,7 @@ const SettingsRulesView: React.FC = () => {
                         )}
                         {!scheduling.enabled && (
                             <div className="mt-4 bg-slate-50 p-4 rounded-xl text-sm text-slate-600 border border-slate-200">
-                                <span className="font-semibold">Note:</span> When disabled, the "My Schedule" page for employees will show a standard business hours message instead of shift assignments.
+                                <span className="font-semibold">Note:</span> When disabled, employees will see a message that the organization does not currently use shift scheduling in HURE.
                             </div>
                         )}
                     </div>
