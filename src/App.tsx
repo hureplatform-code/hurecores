@@ -13,6 +13,7 @@ import SuperAdminLogin from './pages/SuperAdminLogin';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TrialProvider } from './context/TrialContext';
 
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
@@ -92,9 +93,11 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <HashRouter>
-        <AppRoutes />
-      </HashRouter>
+      <TrialProvider>
+        <HashRouter>
+          <AppRoutes />
+        </HashRouter>
+      </TrialProvider>
     </AuthProvider>
   );
 };

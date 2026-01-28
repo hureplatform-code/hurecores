@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { TrialProvider } from '../context/TrialContext';
 import EmployeeSidebar from '../components/employee/EmployeeSidebar';
 import EmployeeTopBar from '../components/employee/EmployeeTopBar';
 
@@ -35,80 +36,82 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
    const canAccessManager = isOwner || (isAdmin && hasAnyAdminPermission);
 
    return (
-      <div className="flex h-screen bg-slate-50 font-inter overflow-hidden">
-         <EmployeeSidebar
-            isOpen={sidebarOpen}
-            setIsOpen={setSidebarOpen}
-            userRole={user.role || user.systemRole}
-            systemRole={user.systemRole}
-            permissions={user.permissions}
-            userName={user.name}
-         />
-
-         <div className="flex-1 flex flex-col min-w-0">
-            <EmployeeTopBar
-               user={user}
-               sidebarOpen={sidebarOpen}
-               setSidebarOpen={setSidebarOpen}
+      <TrialProvider>
+         <div className="flex h-screen bg-slate-50 font-inter overflow-hidden">
+            <EmployeeSidebar
+               isOpen={sidebarOpen}
+               setIsOpen={setSidebarOpen}
+               userRole={user.role || user.systemRole}
+               systemRole={user.systemRole}
+               permissions={user.permissions}
+               userName={user.name}
             />
 
-            <main className="flex-1 overflow-y-auto">
-               <Routes>
-                  {/* Personal Routes - Always available */}
-                  <Route path="/" element={<DashboardView />} />
-                  <Route path="/dashboard" element={<DashboardView />} />
-                  <Route path="/schedule" element={<MySchedule />} />
-                  <Route path="/attendance" element={<MyAttendance />} />
-                  <Route path="/leave" element={<MyLeave />} />
-                  <Route path="/payslips" element={<MyPayslips />} />
-                  <Route path="/documents" element={<MyDocuments />} />
-                  <Route path="/profile" element={<MyProfile />} />
+            <div className="flex-1 flex flex-col min-w-0">
+               <EmployeeTopBar
+                  user={user}
+                  sidebarOpen={sidebarOpen}
+                  setSidebarOpen={setSidebarOpen}
+               />
 
-                  {/* Manager Routes - Permission-based */}
-                  {canAccessManager && (
-                     <>
-                        <Route path="/manager" element={<ManagerDashboard />} />
+               <main className="flex-1 overflow-y-auto">
+                  <Routes>
+                     {/* Personal Routes - Always available */}
+                     <Route path="/" element={<DashboardView />} />
+                     <Route path="/dashboard" element={<DashboardView />} />
+                     <Route path="/schedule" element={<MySchedule />} />
+                     <Route path="/attendance" element={<MyAttendance />} />
+                     <Route path="/leave" element={<MyLeave />} />
+                     <Route path="/payslips" element={<MyPayslips />} />
+                     <Route path="/documents" element={<MyDocuments />} />
+                     <Route path="/profile" element={<MyProfile />} />
 
-                        {/* Staff Management */}
-                        {(isOwner || permissions?.staffManagement) && (
-                           <Route path="/manager/staff" element={<ManagerStaff />} />
-                        )}
+                     {/* Manager Routes - Permission-based */}
+                     {canAccessManager && (
+                        <>
+                           <Route path="/manager" element={<ManagerDashboard />} />
 
-                        {/* Scheduling */}
-                        {(isOwner || permissions?.scheduling) && (
-                           <Route path="/manager/schedule" element={<ManagerSchedule />} />
-                        )}
+                           {/* Staff Management */}
+                           {(isOwner || permissions?.staffManagement) && (
+                              <Route path="/manager/staff" element={<ManagerStaff />} />
+                           )}
 
-                        {/* Attendance */}
-                        {(isOwner || permissions?.attendance) && (
-                           <Route path="/manager/attendance" element={<ManagerAttendance />} />
-                        )}
+                           {/* Scheduling */}
+                           {(isOwner || permissions?.scheduling) && (
+                              <Route path="/manager/schedule" element={<ManagerSchedule />} />
+                           )}
 
-                        {/* Leave Approvals */}
-                        {(isOwner || permissions?.leave) && (
-                           <Route path="/manager/leave" element={<ManagerLeave />} />
-                        )}
+                           {/* Attendance */}
+                           {(isOwner || permissions?.attendance) && (
+                              <Route path="/manager/attendance" element={<ManagerAttendance />} />
+                           )}
 
-                        {/* Documents */}
-                        {(isOwner || permissions?.documentsAndPolicies) && (
-                           <Route path="/manager/documents" element={<ManagerDocuments />} />
-                        )}
+                           {/* Leave Approvals */}
+                           {(isOwner || permissions?.leave) && (
+                              <Route path="/manager/leave" element={<ManagerLeave />} />
+                           )}
 
-                        {/* Payroll */}
-                        {(isOwner || permissions?.payroll) && (
-                           <Route path="/manager/payroll" element={<ManagerPayroll />} />
-                        )}
+                           {/* Documents */}
+                           {(isOwner || permissions?.documentsAndPolicies) && (
+                              <Route path="/manager/documents" element={<ManagerDocuments />} />
+                           )}
 
-                        {/* Settings */}
-                        {(isOwner || permissions?.settingsAdmin) && (
-                           <Route path="/manager/settings" element={<ManagerSettings />} />
-                        )}
-                     </>
-                  )}
-               </Routes>
-            </main>
+                           {/* Payroll */}
+                           {(isOwner || permissions?.payroll) && (
+                              <Route path="/manager/payroll" element={<ManagerPayroll />} />
+                           )}
+
+                           {/* Settings */}
+                           {(isOwner || permissions?.settingsAdmin) && (
+                              <Route path="/manager/settings" element={<ManagerSettings />} />
+                           )}
+                        </>
+                     )}
+                  </Routes>
+               </main>
+            </div>
          </div>
-      </div>
+      </TrialProvider>
    );
 };
 

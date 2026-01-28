@@ -28,35 +28,47 @@ async function mapFirebaseUserToUser(firebaseUser: FirebaseUser): Promise<User |
     try {
         // Fetch profile from Firestore
         const profile = await getDocument<Profile>(docs.user(firebaseUser.uid));
+        
+        console.log('[AuthContext] Profile loaded:', { 
+            id: profile?.id, 
+            systemRole: profile?.systemRole, 
+            jobTitle: profile?.jobTitle 
+        });
 
         if (profile) {
             // Determine display role and systemRole
             let displayRole: string = 'Staff';
-            let systemRole: SystemRole = profile.systemRole || 'EMPLOYEE';
+            let systemRole: SystemRole = 'EMPLOYEE';
             
-            // First check if systemRole is explicitly set
+            // Check jobTitle first - if jobTitle is "Owner", they are the owner
+            const jobTitleLower = profile.jobTitle?.toLowerCase() || '';
+            const isOwnerByJobTitle = jobTitleLower === 'owner' || jobTitleLower.includes('owner');
+            
             if (profile.isSuperAdmin) {
                 displayRole = 'SuperAdmin';
-                systemRole = 'OWNER'; // SuperAdmins have owner-level access
+                systemRole = 'OWNER';
+            } else if (isOwnerByJobTitle) {
+                // If jobTitle says Owner, treat as Owner regardless of systemRole
+                displayRole = 'Owner';
+                systemRole = 'OWNER';
             } else if (profile.systemRole === 'OWNER') {
                 displayRole = 'Owner';
+                systemRole = 'OWNER';
             } else if (profile.systemRole === 'ADMIN') {
                 displayRole = 'Admin';
+                systemRole = 'ADMIN';
             } else if (profile.systemRole === 'MANAGER') {
                 displayRole = 'Manager';
+                systemRole = 'MANAGER';
             } else if (profile.systemRole === 'EMPLOYEE') {
                 displayRole = 'Staff';
-            } else if (!profile.systemRole && profile.jobTitle) {
-                // Fallback: If no systemRole, infer from jobTitle
-                const jobTitleLower = profile.jobTitle.toLowerCase();
-                if (jobTitleLower === 'owner' || jobTitleLower.includes('owner')) {
-                    displayRole = 'Owner';
-                    systemRole = 'OWNER';
-                } else if (jobTitleLower.includes('admin') || jobTitleLower.includes('manager') || jobTitleLower.includes('hr')) {
-                    displayRole = 'Admin';
-                    systemRole = 'ADMIN';
-                }
+                systemRole = 'EMPLOYEE';
+            } else if (jobTitleLower.includes('admin') || jobTitleLower.includes('manager') || jobTitleLower.includes('hr')) {
+                displayRole = 'Admin';
+                systemRole = 'ADMIN';
             }
+            
+            console.log('[AuthContext] Final role:', { displayRole, systemRole });
 
             return {
                 id: profile.id,
@@ -69,7 +81,7 @@ async function mapFirebaseUserToUser(firebaseUser: FirebaseUser): Promise<User |
                 avatar: profile.avatarUrl,
                 isSuperAdmin: profile.isSuperAdmin,
                 permissions: profile.permissions,
-                role: displayRole // Display role based on systemRole or jobTitle
+                role: displayRole
             };
         }
 

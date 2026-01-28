@@ -86,14 +86,9 @@ const PayHistoryRow: React.FC<{ period: PayrollPeriod; user: any; onView: () => 
 
 const MyPayslips: React.FC = () => {
     const { user } = useAuth();
-    
-    // CRITICAL: Verification Gating - Check FIRST before any state or hooks
     const { isVerified } = useTrialStatus();
-
-    if (!isVerified) {
-        return <AccessBlockedOverlay reason="verification" />;
-    }
-
+    
+    // ALL hooks must be declared before any conditional returns
     const [loading, setLoading] = useState(true);
     const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
     const [filteredPeriods, setFilteredPeriods] = useState<PayrollPeriod[]>([]);
@@ -113,16 +108,7 @@ const MyPayslips: React.FC = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (user?.organizationId) {
-            loadPeriods();
-        }
-    }, [user?.organizationId]);
-
-    useEffect(() => {
-        applyFilters();
-    }, [periods, startDate, endDate]);
-
+    // Define functions before useEffect
     const loadPeriods = async () => {
         try {
             setLoading(true);
@@ -162,6 +148,21 @@ const MyPayslips: React.FC = () => {
         });
         setFilteredPeriods(filtered);
     };
+
+    useEffect(() => {
+        if (user?.organizationId) {
+            loadPeriods();
+        }
+    }, [user?.organizationId]);
+
+    useEffect(() => {
+        applyFilters();
+    }, [periods, startDate, endDate]);
+
+    // CRITICAL: Verification Gating - Check AFTER all hooks
+    if (!isVerified) {
+        return <AccessBlockedOverlay reason="verification" />;
+    }
 
     const handleQuickSelect = (value: string) => {
         setQuickSelect(value);
