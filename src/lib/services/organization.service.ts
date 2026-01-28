@@ -153,8 +153,13 @@ export const organizationService = {
     phone?: string;
     isPrimary?: boolean;
   }) {
+    // Filter out undefined values to avoid Firestore errors
+    const cleanedInput = Object.fromEntries(
+      Object.entries(input).filter(([_, v]) => v !== undefined)
+    );
+    
     const docRef = await addDoc(collections.locations(organizationId), {
-      ...input,
+      ...cleanedInput,
       organizationId,
       isPrimary: input.isPrimary ?? false,
       status: 'Pending' as VerificationStatus,
