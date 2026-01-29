@@ -328,7 +328,8 @@ const ScheduleManager: React.FC = () => {
 
     // Generate week dates (Monday start)
     const getWeekDates = () => {
-        const date = new Date(selectedDate);
+        // Parse date with T12:00:00 to avoid timezone issues
+        const date = new Date(selectedDate + 'T12:00:00');
         const day = date.getDay();
         const diff = date.getDate() - day + (day === 0 ? -6 : 1);
         const startOfWeek = new Date(date);
@@ -338,7 +339,11 @@ const ScheduleManager: React.FC = () => {
         for (let i = 0; i < 7; i++) {
             const d = new Date(startOfWeek);
             d.setDate(startOfWeek.getDate() + i);
-            dates.push(d.toISOString().split('T')[0]);
+            // Format to YYYY-MM-DD in local timezone
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const dayOfMonth = String(d.getDate()).padStart(2, '0');
+            dates.push(`${year}-${month}-${dayOfMonth}`);
         }
         return dates;
     };
@@ -450,12 +455,17 @@ const ScheduleManager: React.FC = () => {
                     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                         <div className="grid grid-cols-7 border-b border-slate-200">
                             {weekDates.map((date, i) => {
-                                const isToday = date === new Date().toISOString().split('T')[0];
+                                // Get today's date in local timezone YYYY-MM-DD format
+                                const today = new Date();
+                                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                                const isToday = date === todayStr;
+                                // Parse with T12:00:00 to avoid timezone shift
+                                const dateDay = new Date(date + 'T12:00:00').getDate();
                                 return (
                                     <div key={date} className={`p-4 text-center border-r border-slate-100 last:border-r-0 ${isToday ? 'bg-[#e0f2f1]' : ''}`}>
                                         <div className="text-xs font-semibold text-slate-500 uppercase">{dayNames[i]}</div>
                                         <div className={`text-lg font-bold ${isToday ? 'text-[#0f766e]' : 'text-slate-900'}`}>
-                                            {new Date(date).getDate()}
+                                            {dateDay}
                                         </div>
                                     </div>
                                 );
@@ -465,7 +475,8 @@ const ScheduleManager: React.FC = () => {
                         <div className="grid grid-cols-7 min-h-[400px]">
                             {weekDates.map((date) => {
                                 const dayShifts = shiftsByDate[date] || [];
-                                const isPast = new Date(date) < new Date(new Date().toDateString());
+                                // Parse with T12:00:00 to avoid timezone issues
+                                const isPast = new Date(date + 'T12:00:00') < new Date(new Date().toDateString());
 
                                 return (
                                     <div key={date} className={`border-r border-slate-100 last:border-r-0 p-2 ${isPast ? 'bg-slate-50' : ''}`}>

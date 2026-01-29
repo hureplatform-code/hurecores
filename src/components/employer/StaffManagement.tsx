@@ -1001,23 +1001,6 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex gap-2">
-                                                {member.phone ? (
-                                                    <>
-                                                        <a
-                                                            href={`sms:${member.phone}`}
-                                                            className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold hover:bg-blue-100 transition"
-                                                            title="Send SMS"
-                                                        >
-                                                            SMS
-                                                        </a>
-
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <button disabled className="px-3 py-1 bg-slate-50 text-slate-400 rounded text-xs font-bold cursor-not-allowed">SMS</button>
-
-                                                    </>
-                                                )}
                                                 {member.staffStatus === 'Inactive' ? (
                                                     <button
                                                         onClick={() => handleReactivate(member.id)}

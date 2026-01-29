@@ -267,12 +267,6 @@ const DocumentsPoliciesManager: React.FC = () => {
                                             >
                                                 View
                                             </a>
-                                            <button
-                                                onClick={() => openAckDetails(doc)}
-                                                className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                                            >
-                                                Details
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
