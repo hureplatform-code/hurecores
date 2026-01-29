@@ -264,6 +264,56 @@ export const scheduleService = {
   },
 
   /**
+   * Check if two time ranges overlap
+   */
+  timeRangesOverlap(start1: string, end1: string, start2: string, end2: string): boolean {
+    // Convert times to minutes for comparison
+    const toMinutes = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    const s1 = toMinutes(start1);
+    const e1 = toMinutes(end1);
+    const s2 = toMinutes(start2);
+    const e2 = toMinutes(end2);
+    
+    // Ranges overlap if one starts before the other ends and vice versa
+    return s1 < e2 && s2 < e1;
+  },
+
+  /**
+   * Check if staff has overlapping shifts on the same date
+   */
+  async checkForOverlappingShifts(
+    organizationId: string,
+    staffId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeShiftId?: string
+  ): Promise<{ hasOverlap: boolean; conflictingShift?: Shift }> {
+    // Get all shifts for this staff on this date
+    const allShifts = await this.getShifts(organizationId, { date });
+    
+    for (const shift of allShifts) {
+      // Skip the shift we're assigning to (or being excluded)
+      if (excludeShiftId && shift.id === excludeShiftId) continue;
+      
+      // Check if staff is assigned to this shift
+      const isAssigned = shift.assignments?.some(a => a.staffId === staffId);
+      if (!isAssigned) continue;
+      
+      // Check for time overlap
+      if (this.timeRangesOverlap(startTime, endTime, shift.startTime, shift.endTime)) {
+        return { hasOverlap: true, conflictingShift: shift };
+      }
+    }
+    
+    return { hasOverlap: false };
+  },
+
+  /**
    * Assign staff to shift
    */
   async assignStaff(organizationId: string, shiftId: string, input: {
@@ -299,6 +349,24 @@ export const scheduleService = {
       const existing = shift.assignments?.find(a => a.staffId === input.staffId);
       if (existing) {
         return { success: false, error: 'Staff is already assigned to this shift' };
+      }
+
+      // Check for overlapping shifts at different locations
+      const overlapCheck = await this.checkForOverlappingShifts(
+        organizationId,
+        input.staffId,
+        shift.date,
+        shift.startTime,
+        shift.endTime,
+        shiftId
+      );
+      
+      if (overlapCheck.hasOverlap && overlapCheck.conflictingShift) {
+        const conflictLocation = overlapCheck.conflictingShift.location?.name || 'another location';
+        return { 
+          success: false, 
+          error: `Staff is already scheduled at ${conflictLocation} from ${overlapCheck.conflictingShift.startTime} to ${overlapCheck.conflictingShift.endTime} on this date. Cannot have overlapping shifts at different locations.` 
+        };
       }
     }
 

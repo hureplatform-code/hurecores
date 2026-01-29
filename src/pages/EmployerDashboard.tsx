@@ -128,7 +128,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
               } />
               <Route path="/payroll" element={
                 <SubscriptionGuard>
-                  <PayrollView />
+                  <PayrollView selectedLocationId={selectedLocationId} />
                 </SubscriptionGuard>
               } />
               <Route path="/leave" element={

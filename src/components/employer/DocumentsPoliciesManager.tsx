@@ -12,6 +12,10 @@ const DocumentsPoliciesManager: React.FC = () => {
     const [acknowledgements, setAcknowledgements] = useState<Record<string, DocumentAcknowledgement[]>>({});
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploading, setUploading] = useState(false);
+    
+    // Acknowledgement details modal state
+    const [showAckDetailsModal, setShowAckDetailsModal] = useState(false);
+    const [selectedDocForAck, setSelectedDocForAck] = useState<PolicyDocument | null>(null);
 
     // Upload form state
     const [uploadForm, setUploadForm] = useState({
@@ -127,6 +131,38 @@ const DocumentsPoliciesManager: React.FC = () => {
         return { acknowledged: acks.length, total: totalRequired };
     };
 
+    // Get list of staff assigned to a document
+    const getAssignedStaff = (doc: PolicyDocument): Profile[] => {
+        if (doc.assignedTo === 'all') {
+            return staff;
+        } else if (doc.assignedTo === 'roles') {
+            return staff.filter(s => doc.assignedRoles?.includes(s.jobTitle || ''));
+        } else {
+            return staff.filter(s => doc.assignedStaffIds?.includes(s.id));
+        }
+    };
+
+    // Get acknowledgement details for a document
+    const getAcknowledgementDetails = (doc: PolicyDocument) => {
+        const assignedStaff = getAssignedStaff(doc);
+        const acks = acknowledgements[doc.id] || [];
+        const ackedStaffIds = acks.map(a => a.staffId);
+
+        const acknowledged = assignedStaff.filter(s => ackedStaffIds.includes(s.id));
+        const pending = assignedStaff.filter(s => !ackedStaffIds.includes(s.id));
+
+        // Get acknowledgement timestamps
+        const ackMap: Record<string, DocumentAcknowledgement> = {};
+        acks.forEach(a => { ackMap[a.staffId] = a; });
+
+        return { acknowledged, pending, ackMap };
+    };
+
+    const openAckDetails = (doc: PolicyDocument) => {
+        setSelectedDocForAck(doc);
+        setShowAckDetailsModal(true);
+    };
+
     if (loading) {
         return (
             <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -193,15 +229,19 @@ const DocumentsPoliciesManager: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         {doc.requiresAcknowledgement ? (
-                                            <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => openAckDetails(doc)}
+                                                className="flex items-center gap-2 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                                                title="Click to view acknowledgement details"
+                                            >
                                                 <div className={`w-2 h-2 rounded-full ${allAcked ? 'bg-green-500' : 'bg-amber-500'}`}></div>
                                                 <span className={`font-bold ${allAcked ? 'text-green-600' : 'text-amber-600'}`}>
                                                     {status.acknowledged}/{status.total}
                                                 </span>
-                                                <span className="text-xs text-slate-400">
+                                                <span className={`text-xs px-1.5 py-0.5 rounded ${allAcked ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                                                     {allAcked ? 'Complete' : 'Pending'}
                                                 </span>
-                                            </div>
+                                            </button>
                                         ) : (
                                             <span className="text-xs text-slate-400">Not required</span>
                                         )}
@@ -228,7 +268,7 @@ const DocumentsPoliciesManager: React.FC = () => {
                                                 View
                                             </a>
                                             <button
-                                                onClick={() => alert('View acknowledgement details coming soon!')}
+                                                onClick={() => openAckDetails(doc)}
                                                 className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                                             >
                                                 Details
@@ -410,6 +450,169 @@ const DocumentsPoliciesManager: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Acknowledgement Details Modal */}
+            {showAckDetailsModal && selectedDocForAck && (() => {
+                const details = getAcknowledgementDetails(selectedDocForAck);
+                const status = getAcknowledgementStatus(selectedDocForAck);
+                const allAcked = status.acknowledged >= status.total && status.total > 0;
+
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900">Acknowledgement Details</h3>
+                                    <p className="text-sm text-slate-500 mt-1">{selectedDocForAck.name}</p>
+                                </div>
+                                <button
+                                    onClick={() => { setShowAckDetailsModal(false); setSelectedDocForAck(null); }}
+                                    className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {/* Summary Stats */}
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="bg-slate-50 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-slate-900">{status.total}</div>
+                                    <div className="text-xs text-slate-500 font-medium">Total Assigned</div>
+                                </div>
+                                <div className="bg-green-50 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-green-600">{details.acknowledged.length}</div>
+                                    <div className="text-xs text-green-600 font-medium">Acknowledged</div>
+                                </div>
+                                <div className="bg-amber-50 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-amber-600">{details.pending.length}</div>
+                                    <div className="text-xs text-amber-600 font-medium">Pending</div>
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="mb-6">
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="font-medium text-slate-700">Progress</span>
+                                    <span className={`font-bold ${allAcked ? 'text-green-600' : 'text-amber-600'}`}>
+                                        {status.total > 0 ? Math.round((status.acknowledged / status.total) * 100) : 0}%
+                                    </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2.5">
+                                    <div
+                                        className={`h-2.5 rounded-full transition-all ${allAcked ? 'bg-green-500' : 'bg-amber-500'}`}
+                                        style={{ width: `${status.total > 0 ? (status.acknowledged / status.total) * 100 : 0}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            {/* Tabs for Acknowledged / Pending */}
+                            <div className="border-b border-slate-200 mb-4">
+                                <div className="flex gap-4">
+                                    <span className="px-1 pb-2 text-sm font-bold text-slate-900 border-b-2 border-teal-500">
+                                        All Staff ({status.total})
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Staff List */}
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                {/* Pending First */}
+                                {details.pending.length > 0 && (
+                                    <div className="mb-4">
+                                        <div className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                                            Pending ({details.pending.length})
+                                        </div>
+                                        {details.pending.map((staffMember) => (
+                                            <div
+                                                key={staffMember.id}
+                                                className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100 mb-2"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-amber-700 font-bold text-sm">
+                                                        {(staffMember.fullName || staffMember.email || '?').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-slate-900">{staffMember.fullName || staffMember.email}</div>
+                                                        <div className="text-xs text-slate-500">{staffMember.jobTitle || 'No role assigned'}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg">
+                                                        Not Acknowledged
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Acknowledged */}
+                                {details.acknowledged.length > 0 && (
+                                    <div>
+                                        <div className="text-xs font-bold text-green-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                            Acknowledged ({details.acknowledged.length})
+                                        </div>
+                                        {details.acknowledged.map((staffMember) => {
+                                            const ack = details.ackMap[staffMember.id];
+                                            let ackDate = 'Unknown date';
+                                            try {
+                                                const dateVal = ack?.acknowledgedAt as any;
+                                                const date = dateVal?.toDate ? dateVal.toDate() : new Date(dateVal);
+                                                if (!isNaN(date.getTime())) {
+                                                    ackDate = date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                }
+                                            } catch (e) { }
+
+                                            return (
+                                                <div
+                                                    key={staffMember.id}
+                                                    className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100 mb-2"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold text-sm">
+                                                            {(staffMember.fullName || staffMember.email || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold text-slate-900">{staffMember.fullName || staffMember.email}</div>
+                                                            <div className="text-xs text-slate-500">{staffMember.jobTitle || 'No role assigned'}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg flex items-center gap-1">
+                                                            ✓ Acknowledged
+                                                        </span>
+                                                        <div className="text-xs text-slate-400 mt-1">{ackDate}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {details.acknowledged.length === 0 && details.pending.length === 0 && (
+                                    <div className="text-center py-8 text-slate-500">
+                                        <div className="text-3xl mb-2">📋</div>
+                                        <p>No staff assigned to this document</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Close Button */}
+                            <div className="flex justify-end mt-6 pt-4 border-t border-slate-100">
+                                <button
+                                    onClick={() => { setShowAckDetailsModal(false); setSelectedDocForAck(null); }}
+                                    className="px-6 py-2.5 rounded-xl font-semibold text-white transition-colors"
+                                    style={{ backgroundColor: '#1a2e35' }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };

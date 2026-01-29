@@ -239,7 +239,7 @@ export default function HureCoreLanding() {
                         <TinyLink onClick={() => scrollToId("faqs")}>FAQs</TinyLink>
                     </nav>
                     <div className="flex items-center gap-3">
-                        <button onClick={() => navTo("signin")} className="hidden font-semibold text-sm text-slate-600 hover:text-slate-900 md:block px-4 py-2 hover:bg-slate-100/50 rounded-xl transition-colors">Sign in</button>
+                        <button onClick={() => navTo("signin")} className="font-semibold text-sm text-slate-600 hover:text-slate-900 px-4 py-2 hover:bg-slate-100/50 rounded-xl transition-colors">Sign in</button>
                         <PrimaryButton onClick={() => navTo("trial")} className="!py-2.5 !px-5 !text-xs uppercase tracking-wide">Get Started</PrimaryButton>
                     </div>
                 </div>

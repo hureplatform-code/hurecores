@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTrialStatus, AccessBlockedOverlay } from '../../context/TrialContext';
-import { payrollService, staffService, scheduleService } from '../../lib/services';
-import type { PayrollPeriod, PayrollEntry, Profile } from '../../types';
+import { payrollService, staffService, scheduleService, organizationService } from '../../lib/services';
+import type { PayrollPeriod, PayrollEntry, Profile, Location } from '../../types';
 import { formatDateTimeKE, formatDateKE, formatTimeKE } from '../../lib/utils/dateFormat';
 import DateInput from '../common/DateInput';
 import { PrivacyMask, PrivacyToggle } from '../common/PrivacyControl';
@@ -23,12 +23,17 @@ interface LocumPayoutEntry {
     shiftTime: string;
     role: string;
     location: string;
+    locationId?: string;
     rateCents: number;
     status: 'Scheduled' | 'Worked' | 'No-show';
     supervisorName?: string;
 }
 
-const PayrollView: React.FC = () => {
+interface PayrollViewProps {
+    selectedLocationId?: string;
+}
+
+const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
     const { user } = useAuth();
     const { canPerformPayouts, isVerified, isLoading: trialLoading, loadError, organization, refreshStatus } = useTrialStatus(); // Enforce verification check
     const [loading, setLoading] = useState(true);
@@ -38,6 +43,8 @@ const PayrollView: React.FC = () => {
     const [locumPayouts, setLocumPayouts] = useState<LocumPayoutEntry[]>([]);
     const [summary, setSummary] = useState<any>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [locations, setLocations] = useState<Location[]>([]);
+    const [payrollLocationFilter, setPayrollLocationFilter] = useState<string>(selectedLocationId || 'all');
     const [expandedEntry, setExpandedEntry] = useState<string | null>(null);
     const [showAllowanceModal, setShowAllowanceModal] = useState<string | null>(null);
     const [error, setError] = useState('');
@@ -95,13 +102,31 @@ const PayrollView: React.FC = () => {
 
     useEffect(() => {
         loadPeriods();
+        loadLocations();
     }, [user?.organizationId, showArchived]); // Reload when archive toggle changes
+
+    // Update local filter when prop changes
+    useEffect(() => {
+        if (selectedLocationId) {
+            setPayrollLocationFilter(selectedLocationId);
+        }
+    }, [selectedLocationId]);
 
     useEffect(() => {
         if (selectedPeriod) {
             loadPeriodDetails(selectedPeriod.id);
         }
-    }, [selectedPeriod?.id]);
+    }, [selectedPeriod?.id, payrollLocationFilter]);
+
+    const loadLocations = async () => {
+        if (!user?.organizationId) return;
+        try {
+            const locs = await organizationService.getLocations(user.organizationId);
+            setLocations(locs);
+        } catch (error) {
+            console.error('Error loading locations:', error);
+        }
+    };
 
     const loadPeriods = async () => {
         if (!user?.organizationId) return;
@@ -144,6 +169,11 @@ const PayrollView: React.FC = () => {
                     }
                     return true;
                 })
+                // Filter by location if a specific location is selected
+                .filter(entry => {
+                    if (payrollLocationFilter === 'all') return true;
+                    return entry.staff?.locationId === payrollLocationFilter;
+                })
                 .map(entry => {
                     // Calculate month units (days in period)
                     const startDate = new Date(selectedPeriod.startDate);
@@ -177,10 +207,11 @@ const PayrollView: React.FC = () => {
             setEntries(extendedEntries);
             setSummary(summaryData);
 
-            // Load locum payouts from shifts
+            // Load locum payouts from shifts (filtered by location)
             const shifts = await scheduleService.getShifts(user.organizationId, {
                 startDate: selectedPeriod.startDate,
-                endDate: selectedPeriod.endDate
+                endDate: selectedPeriod.endDate,
+                locationId: payrollLocationFilter !== 'all' ? payrollLocationFilter : undefined
             });
 
             const locums: LocumPayoutEntry[] = shifts
@@ -589,13 +620,29 @@ const PayrollView: React.FC = () => {
                         <>
                             {/* Period Header with Filter */}
                             <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 flex-wrap">
                                     <div className="text-sm text-slate-600">
                                         <span className="font-semibold">Marked by:</span> Owner/Admin
                                     </div>
                                     <div className="text-sm text-slate-600">
                                         <span className="font-semibold">Pay period:</span> {selectedPeriod.startDate} to {selectedPeriod.endDate}
                                     </div>
+                                    {/* Location Filter */}
+                                    {locations.length > 0 && (
+                                        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                                            <span className="text-sm">📍</span>
+                                            <select
+                                                className="bg-transparent text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                                                value={payrollLocationFilter}
+                                                onChange={(e) => setPayrollLocationFilter(e.target.value)}
+                                            >
+                                                <option value="all">All Locations</option>
+                                                {locations.map(loc => (
+                                                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-xs text-slate-400">
                                     Auto-saved: {formatDateTimeKE(new Date())}
