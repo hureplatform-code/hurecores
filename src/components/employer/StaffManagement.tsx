@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { staffService, organizationService, storageService } from '../../lib/services';
+import { staffService, organizationService, storageService, validationService } from '../../lib/services';
 import KenyaPhoneInput from '../common/KenyaPhoneInput';
 import type {
     Profile,
@@ -355,6 +355,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ selectedLocationId })
         }
 
         try {
+            // Check if email already exists in the organization
+            const emailInOrgCheck = await validationService.checkStaffEmailInOrg(
+                user.organizationId,
+                formData.email
+            );
+
+            if (emailInOrgCheck.exists) {
+                setError(`A staff member with the email "${formData.email}" already exists in your organization.`);
+                scrollToTop();
+                return;
+            }
+
             let licenseDocUrl = '';
             if (licenseFile) {
                 const result = await storageService.uploadFile(

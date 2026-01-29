@@ -329,6 +329,29 @@ export const payrollService = {
   },
 
   /**
+   * Mark payroll period as exported
+   */
+  async markAsExported(organizationId: string, periodId: string): Promise<void> {
+    const period = await this.getPeriodById(organizationId, periodId);
+
+    await updateDoc(docs.payrollPeriod(organizationId, periodId), {
+      exportedAt: new Date().toISOString(),
+      exportedBy: auth.currentUser?.uid,
+      updatedAt: serverTimestamp()
+    });
+
+    // Log to organization audit trail
+    await auditService.logAction(organizationId, 'Payroll Exported', 'Payroll', {
+      entityId: periodId,
+      entityName: period?.name || `Period ${periodId}`,
+      details: {
+        periodStart: period?.startDate,
+        periodEnd: period?.endDate
+      }
+    });
+  },
+
+  /**
    * Export payroll to CSV
    */
   async exportToCSV(organizationId: string, periodId: string): Promise<string> {

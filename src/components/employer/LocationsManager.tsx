@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { organizationService } from '../../lib/services/organization.service';
+import { organizationService, validationService } from '../../lib/services';
 import KenyaPhoneInput from '../common/KenyaPhoneInput';
 import type { Location } from '../../types';
 import DateInput from '../common/DateInput';
@@ -75,6 +75,23 @@ const LocationsManager: React.FC<LocationsManagerProps> = ({ onLocationUpdate, s
         setSaving(true);
         setError('');
         try {
+            // Check for duplicate location name or phone within the organization
+            const duplicateCheck = await validationService.checkLocationDuplicates(
+                user.organizationId,
+                newLocation.name,
+                newLocation.phone || undefined
+            );
+
+            if (duplicateCheck.hasDuplicate) {
+                if (duplicateCheck.duplicateName) {
+                    setError(`A location with the name "${newLocation.name}" already exists in your organization.`);
+                } else if (duplicateCheck.duplicatePhone) {
+                    setError(`A location with this phone number already exists in your organization.`);
+                }
+                setSaving(false);
+                return;
+            }
+
             await organizationService.createLocation(user.organizationId, {
                 name: newLocation.name,
                 city: newLocation.city || undefined,

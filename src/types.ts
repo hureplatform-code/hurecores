@@ -461,6 +461,8 @@ export interface PayrollPeriod {
   isFinalized: boolean;
   finalizedAt?: string;
   finalizedBy?: string;
+  exportedAt?: string;
+  exportedBy?: string;
   createdAt: string;
   updatedAt: string;
   isArchived?: boolean;

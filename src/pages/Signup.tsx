@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { docs, setDoc, serverTimestamp, collections, addDoc } from '../lib/firestore';
 import { emailService } from '../lib/services/email.service';
 import { leaveService } from '../lib/services/leave.service';
+import { validationService } from '../lib/services/validation.service';
 import { normalizeKenyanPhone, isValidKenyanPhone } from '../lib/utils/phoneValidation';
 import { SystemRole, SubscriptionPlan, PLAN_LIMITS } from '../types';
 
@@ -47,6 +48,10 @@ const Signup: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [otp, setOtp] = useState('');
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+
+  // Duplicate organization modal state
+  const [showDuplicateOrgModal, setShowDuplicateOrgModal] = useState(false);
+  const [duplicateOrgInfo, setDuplicateOrgInfo] = useState<{ field: string; message: string; orgName: string } | null>(null);
 
   const [formData, setFormData] = useState<SignupFormData>({
     orgName: '',
@@ -92,7 +97,8 @@ const Signup: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const validateStep = (): boolean => {
+  // Basic field validation (synchronous)
+  const validateStepFields = (): boolean => {
     setError('');
 
     if (step === 1) {
@@ -169,6 +175,44 @@ const Signup: React.FC = () => {
     return true;
   };
 
+  // Async validation with deduplication checks
+  const validateStepAsync = async (): Promise<boolean> => {
+    setLoading(true);
+    try {
+      // Step 1: Check organization email for duplicates
+      if (step === 1) {
+        const orgDupeCheck = await validationService.checkOrganizationDuplicates({
+          email: formData.orgEmail
+        });
+        if (orgDupeCheck.isDuplicate) {
+          setDuplicateOrgInfo({
+            field: orgDupeCheck.field || 'email',
+            message: orgDupeCheck.message || 'Organization already exists',
+            orgName: orgDupeCheck.existingOrgName || 'Unknown'
+          });
+          setShowDuplicateOrgModal(true);
+          return false;
+        }
+      }
+
+      // Step 2: Check user email uniqueness
+      if (step === 2) {
+        const emailCheck = await validationService.checkEmailExists(formData.email);
+        if (emailCheck.exists) {
+          setError(emailCheck.message || 'This email is already registered.');
+          return false;
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Validation error:', err);
+      return true; // Don't block on validation errors
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSendOTP = async () => {
     setLoading(true);
     setError('');
@@ -212,18 +256,23 @@ const Signup: React.FC = () => {
   };
 
   const handleNext = async () => {
-    if (validateStep()) {
-      // Intercept Step 2 -> 3 for Verification
-      if (step === 2 && !isEmailVerified) {
-        const sent = await handleSendOTP();
-        if (sent) {
-          setIsVerifying(true);
-        }
-        return;
-      }
+    // First do basic field validation
+    if (!validateStepFields()) return;
 
-      setStep(prev => prev + 1);
+    // Then do async deduplication checks
+    const asyncValid = await validateStepAsync();
+    if (!asyncValid) return;
+
+    // Intercept Step 2 -> 3 for Verification
+    if (step === 2 && !isEmailVerified) {
+      const sent = await handleSendOTP();
+      if (sent) {
+        setIsVerifying(true);
+      }
+      return;
     }
+
+    setStep(prev => prev + 1);
   };
 
   const handleBack = () => {
@@ -237,7 +286,7 @@ const Signup: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep()) return;
+    if (!validateStepFields()) return;
 
     setLoading(true);
     setError('');
@@ -872,6 +921,67 @@ const Signup: React.FC = () => {
               >
                 Got it
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Organization Modal */}
+      {showDuplicateOrgModal && duplicateOrgInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6 bg-amber-50 border-b border-amber-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Organization Already Exists</h3>
+                  <p className="text-sm text-amber-700 font-medium">{duplicateOrgInfo.orgName}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-slate-600 mb-4">
+                {duplicateOrgInfo.message}
+              </p>
+              
+              <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                <h4 className="font-semibold text-slate-800 mb-2">What you can do:</h4>
+                <ul className="text-sm text-slate-600 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">•</span>
+                    <span>Contact the organization owner to invite you as a staff member</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">•</span>
+                    <span>If you are the owner, try logging in with your existing account</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">•</span>
+                    <span>Use a different organization email if this is a separate entity</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDuplicateOrgModal(false);
+                  setDuplicateOrgInfo(null);
+                }}
+                className="flex-1 py-3 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                Edit Info
+              </button>
+              <Link
+                to="/login"
+                className="flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors text-center"
+              >
+                Go to Login
+              </Link>
             </div>
           </div>
         </div>

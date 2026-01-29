@@ -390,6 +390,11 @@ const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
             a.download = `payroll-${selectedPeriod.name.replace(/\s+/g, '-')}-${status}.csv`;
             a.click();
             window.URL.revokeObjectURL(url);
+
+            // Mark period as exported
+            await payrollService.markAsExported(user.organizationId, selectedPeriod.id);
+            loadPeriods(); // Refresh to show updated status
+            setSuccess('Payroll exported successfully!');
         } catch (err: any) {
             setError(err.message || 'Failed to export');
         }

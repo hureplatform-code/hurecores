@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { organizationService, staffService, scheduleService, attendanceService, leaveService } from '../../lib/services';
+import { organizationService, staffService, scheduleService, attendanceService, leaveService, payrollService } from '../../lib/services';
 import type { Organization, DashboardStats, Location, Profile } from '../../types';
 
 // Helper to check if license is expired or expiring soon
@@ -115,8 +115,18 @@ const DashboardHome: React.FC = () => {
                 expiringSoonList: expiringSoonList.sort((a, b) => a.daysLeft - b.daysLeft)
             });
 
-            // TODO: Get payroll status (placeholder for now)
-            setPayrollStatus({ draft: 0, ready: 0, exported: 0 });
+            // Get payroll status
+            try {
+                const periods = await payrollService.getPeriods(user.organizationId);
+                const activePeriods = periods.filter(p => !p.isArchived);
+                const draftCount = activePeriods.filter(p => !p.isFinalized).length;
+                const finalizedCount = activePeriods.filter(p => p.isFinalized).length;
+                const exportedCount = activePeriods.filter(p => p.exportedAt).length;
+                setPayrollStatus({ draft: draftCount, ready: finalizedCount, exported: exportedCount });
+            } catch (err) {
+                console.error('Error loading payroll status:', err);
+                setPayrollStatus({ draft: 0, ready: 0, exported: 0 });
+            }
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
