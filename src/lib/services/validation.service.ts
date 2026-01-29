@@ -5,8 +5,6 @@ import {
   query,
   where
 } from '../firestore';
-import { fetchSignInMethodsForEmail } from 'firebase/auth';
-import { auth } from '../firebase';
 
 export interface DuplicateCheckResult {
   isDuplicate: boolean;
@@ -18,24 +16,44 @@ export interface DuplicateCheckResult {
 
 export const validationService = {
   /**
-   * Check if an email is already registered as a user (Firebase Auth)
+   * Check if an email is already registered as an owner/employer user in Firestore
+   * This checks the users collection to prevent duplicate owner accounts
    */
   async checkEmailExists(email: string): Promise<{ exists: boolean; message?: string }> {
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      const methods = await fetchSignInMethodsForEmail(auth, normalizedEmail);
-      if (methods && methods.length > 0) {
+      
+      // Query the users collection to check if this email is already used
+      const usersQuery = query(
+        collections.users(),
+        where('email', '==', normalizedEmail)
+      );
+      const usersSnapshot = await getDocs(usersQuery);
+      
+      if (!usersSnapshot.empty) {
+        // Check if any of the matching users is an owner/employer
+        for (const doc of usersSnapshot.docs) {
+          const userData = doc.data();
+          const systemRole = (userData.systemRole || '').toUpperCase();
+          const role = (userData.role || '').toUpperCase();
+          
+          // Check for owner/employer roles (case-insensitive)
+          if (systemRole === 'OWNER' || systemRole === 'EMPLOYER' || role === 'OWNER' || role === 'EMPLOYER') {
+            return {
+              exists: true,
+              message: 'This email is already registered as an employer/owner. Please log in or use a different email.'
+            };
+          }
+        }
+        // Email exists but not as owner - still block to prevent conflicts
         return {
           exists: true,
           message: 'This email is already registered. Please log in or use a different email.'
         };
       }
+      
       return { exists: false };
     } catch (error: any) {
-      // Firebase throws an error for invalid email format, which we should handle
-      if (error.code === 'auth/invalid-email') {
-        return { exists: false }; // Let form validation handle invalid emails
-      }
       console.error('Error checking email:', error);
       return { exists: false }; // Don't block signup on check failure
     }

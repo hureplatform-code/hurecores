@@ -323,7 +323,7 @@ const Signup: React.FC = () => {
       // Step 3: Create user profile
       await setDoc(docs.user(userId), {
         id: userId,
-        email: formData.email,
+        email: formData.email.toLowerCase().trim(),
         fullName: `${formData.firstName} ${formData.lastName}`,
         firstName: formData.firstName,
         lastName: formData.lastName,
