@@ -124,7 +124,22 @@ const MyPayslips: React.FC = () => {
                 return hoursDiff >= 24;
             });
 
-            setPeriods(visiblePeriods);
+            // ADDITIONAL FILTER: Only show periods where the current user has a payroll entry
+            // This prevents showing "No Pay History Found" for periods where user wasn't included
+            const periodsWithUserEntries = await Promise.all(
+                visiblePeriods.map(async (period) => {
+                    try {
+                        const entries = await payrollService.getEntries(user?.organizationId!, period.id!);
+                        const hasEntry = entries.some(e => e.staffId === user?.id);
+                        return hasEntry ? period : null;
+                    } catch {
+                        return null;
+                    }
+                })
+            );
+            
+            const userPeriods = periodsWithUserEntries.filter((p): p is PayrollPeriod => p !== null);
+            setPeriods(userPeriods);
         } catch (err) {
             console.error('Error loading payroll periods:', err);
             setError('Failed to load payroll periods');
@@ -300,7 +315,8 @@ const MyPayslips: React.FC = () => {
                     <div className="p-12 text-center">
                         <div className="text-4xl mb-4">📭</div>
                         <h3 className="text-lg font-semibold text-slate-900 mb-2">No Pay History Found</h3>
-                        <p className="text-slate-500">No finalized payroll periods found in this date range.</p>
+                        <p className="text-slate-500">No finalized payroll periods found for your account in this date range.</p>
+                        <p className="text-xs text-slate-400 mt-2">If you believe this is an error, please contact your administrator.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">

@@ -156,7 +156,6 @@ const DashboardHome: React.FC = () => {
         { label: 'Export Payroll', icon: '💰', color: 'bg-slate-800', href: '#/employer/payroll', requiresCompliance: true },
     ];
 
-    const verifiedLocations = locations.filter(l => l.status === 'Verified' || l.status === 'Active').length;
     // Organization is compliant if orgStatus is 'Verified' (approved) or 'Active' (approved + enabled)
     const isCompliant = org?.orgStatus === 'Verified' || org?.orgStatus === 'Active';
 
