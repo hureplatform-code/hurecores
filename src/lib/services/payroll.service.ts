@@ -485,6 +485,61 @@ export const payrollService = {
   },
 
   /**
+   * Update entry allowances and recalculate gross/net
+   */
+  async updateEntryAllowances(
+    organizationId: string, 
+    entryId: string, 
+    allowanceDetails: { amount: number; notes: string }[]
+  ): Promise<void> {
+    const q = query(collections.payrollEntries(organizationId));
+    const snapshot = await getDocs(q);
+    const doc = snapshot.docs.find(d => d.id === entryId);
+
+    if (doc) {
+      const entryData = doc.data();
+      const allowancesTotalCents = allowanceDetails.reduce((sum, a) => sum + a.amount, 0);
+      const payableBaseCents = entryData.payableBaseCents || 0;
+      
+      // Recalculate gross with allowances
+      const newGrossPayCents = payableBaseCents + allowancesTotalCents;
+      
+      // Recalculate deductions based on new gross
+      const rules = await statutoryService.getGlobalRules();
+      const calculation = statutoryService.calculateNetPay(
+        newGrossPayCents / 100, // Convert to KES
+        0, // allowances already included in gross
+        rules
+      );
+      
+      const deductionsTotalCents = Math.round(calculation.deductions.total * 100);
+      const netPayCents = Math.round(calculation.netPay * 100);
+
+      await updateDoc(doc.ref, {
+        allowanceDetails,
+        allowancesTotalCents,
+        grossPayCents: newGrossPayCents,
+        deductionsTotalCents,
+        deductionDetails: {
+          nssfCents: Math.round(calculation.deductions.nssf * 100),
+          nssfTier1Cents: Math.round((calculation.deductions.nssfTier1 || 0) * 100),
+          nssfTier2Cents: Math.round((calculation.deductions.nssfTier2 || 0) * 100),
+          payeCents: Math.round(calculation.deductions.paye * 100),
+          payeGrossTaxCents: Math.round((calculation.paye?.grossTax || 0) * 100),
+          payePersonalReliefCents: Math.round((calculation.paye?.personalRelief || 0) * 100),
+          shifCents: Math.round(calculation.deductions.shif * 100),
+          housingLevyCents: Math.round(calculation.deductions.housingLevy * 100),
+          totalCents: deductionsTotalCents,
+          isValid: calculation.validation.isValid,
+          validationErrors: calculation.validation.errors
+        },
+        netPayCents,
+        updatedAt: serverTimestamp()
+      });
+    }
+  },
+
+  /**
    * Mark entry as paid
    */
   async markAsPaid(organizationId: string, entryId: string, paymentReference?: string): Promise<void> {

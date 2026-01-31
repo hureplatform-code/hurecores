@@ -200,7 +200,8 @@ const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
                         monthUnits,
                         workedUnitsDays: workedDays,
                         absentDays: entry.absentUnits || 0,
-                        allowanceDetails: []
+                        // Preserve allowanceDetails from database if they exist
+                        allowanceDetails: (entry as any).allowanceDetails || []
                     } as ExtendedPayrollEntry;
                 });
 
@@ -406,35 +407,40 @@ const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
         const entry = entries.find(e => e.id === entryId);
         if (!entry) return;
 
+        let newAllowanceDetails: { amount: number; notes: string }[];
+
         if (editingAllowanceIndex !== null) {
             // Edit existing allowance
-            setEntries(prev => prev.map(e => {
-                if (e.id !== entryId) return e;
-                const newDetails = [...(e.allowanceDetails || [])];
-                newDetails[editingAllowanceIndex] = {
-                    amount: newAllowance.amount * 100,
-                    notes: newAllowance.notes
-                };
-                const newTotal = newDetails.reduce((sum, a) => sum + a.amount, 0);
-                return {
-                    ...e,
-                    allowanceDetails: newDetails,
-                    allowancesTotalCents: newTotal
-                };
-            }));
+            newAllowanceDetails = [...(entry.allowanceDetails || [])];
+            newAllowanceDetails[editingAllowanceIndex] = {
+                amount: newAllowance.amount * 100,
+                notes: newAllowance.notes
+            };
         } else {
             // Add new allowance
-            const newAllowanceDetails = [
+            newAllowanceDetails = [
                 ...(entry.allowanceDetails || []),
                 { amount: newAllowance.amount * 100, notes: newAllowance.notes }
             ];
-            const totalAllowances = newAllowanceDetails.reduce((sum, a) => sum + a.amount, 0);
+        }
 
-            setEntries(prev => prev.map(e =>
-                e.id === entryId
-                    ? { ...e, allowanceDetails: newAllowanceDetails, allowancesTotalCents: totalAllowances }
-                    : e
-            ));
+        const totalAllowances = newAllowanceDetails.reduce((sum, a) => sum + a.amount, 0);
+
+        // Update local state immediately for responsive UI
+        setEntries(prev => prev.map(e =>
+            e.id === entryId
+                ? { ...e, allowanceDetails: newAllowanceDetails, allowancesTotalCents: totalAllowances }
+                : e
+        ));
+
+        // Persist to database
+        try {
+            await payrollService.updateEntryAllowances(user.organizationId, entryId, newAllowanceDetails);
+            // Reload to get recalculated deductions and net pay
+            loadPeriodDetails(selectedPeriod.id);
+        } catch (err: any) {
+            console.error('Failed to save allowance:', err);
+            setError('Failed to save allowance. Please try again.');
         }
 
         setShowAllowanceModal(null);
@@ -456,20 +462,33 @@ const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
         setShowAllowanceModal(entryId);
     };
 
-    const handleDeleteAllowance = (entryId: string, allowanceIdx: number) => {
+    const handleDeleteAllowance = async (entryId: string, allowanceIdx: number) => {
+        if (!user?.organizationId || !selectedPeriod) return;
         if (!window.confirm('Are you sure you want to delete this allowance?')) return;
 
-        setEntries(prev => prev.map(e => {
-            if (e.id !== entryId) return e;
-            const newDetails = [...(e.allowanceDetails || [])];
-            newDetails.splice(allowanceIdx, 1);
-            const newTotal = newDetails.reduce((sum, a) => sum + a.amount, 0);
-            return {
-                ...e,
-                allowanceDetails: newDetails,
-                allowancesTotalCents: newTotal
-            };
-        }));
+        const entry = entries.find(e => e.id === entryId);
+        if (!entry) return;
+
+        const newDetails = [...(entry.allowanceDetails || [])];
+        newDetails.splice(allowanceIdx, 1);
+        const newTotal = newDetails.reduce((sum, a) => sum + a.amount, 0);
+
+        // Update local state immediately
+        setEntries(prev => prev.map(e =>
+            e.id === entryId
+                ? { ...e, allowanceDetails: newDetails, allowancesTotalCents: newTotal }
+                : e
+        ));
+
+        // Persist to database
+        try {
+            await payrollService.updateEntryAllowances(user.organizationId, entryId, newDetails);
+            // Reload to get recalculated deductions and net pay
+            loadPeriodDetails(selectedPeriod.id);
+        } catch (err: any) {
+            console.error('Failed to delete allowance:', err);
+            setError('Failed to delete allowance. Please try again.');
+        }
     };
 
     const formatCurrency = (cents: number) => {
@@ -1269,8 +1288,8 @@ const PayrollView: React.FC<PayrollViewProps> = ({ selectedLocationId }) => {
                                 <input
                                     type="number"
                                     required
-                                    value={newAllowance.amount}
-                                    onChange={(e) => setNewAllowance(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                                    value={newAllowance.amount || ''}
+                                    onChange={(e) => setNewAllowance(prev => ({ ...prev, amount: Number(e.target.value) || 0 }))}
                                     className="w-full px-4 py-3 border border-slate-300 rounded-xl"
                                     placeholder="e.g., 5000"
                                 />

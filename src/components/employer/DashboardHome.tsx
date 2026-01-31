@@ -302,6 +302,62 @@ const DashboardHome: React.FC = () => {
                                 {getVerificationBadge(org?.orgStatus || 'Unverified')}
                             </div>
 
+                            {/* Facility Licenses Row */}
+                            {(() => {
+                                const expiredFacilityCount = locations.filter(l => l.licenseExpiry && new Date(l.licenseExpiry) < new Date()).length;
+                                const verifiedFacilityCount = locations.filter(l => 
+                                    (l.status === 'Verified' || l.status === 'Active') && 
+                                    (!l.licenseExpiry || new Date(l.licenseExpiry) >= new Date())
+                                ).length;
+                                const totalLocations = locations.length;
+                                const hasExpired = expiredFacilityCount > 0;
+                                
+                                return (
+                                    <div className={`flex items-center justify-between p-4 rounded-xl border ${hasExpired ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-100'}`}>
+                                        <div className="flex items-center space-x-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${hasExpired ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>🏥</div>
+                                            <div>
+                                                <div className="font-bold text-slate-900">Facility Licenses</div>
+                                                <div className="text-xs text-slate-500">
+                                                    {hasExpired 
+                                                        ? `${expiredFacilityCount} expired, ${verifiedFacilityCount} of ${totalLocations} valid`
+                                                        : `${verifiedFacilityCount} of ${totalLocations} locations verified`
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {hasExpired ? (
+                                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase border border-red-200">Expired</span>
+                                        ) : verifiedFacilityCount === totalLocations && totalLocations > 0 ? (
+                                            <span className="bg-[#e0f2f1] text-[#0f766e] px-3 py-1 rounded-full text-xs font-bold uppercase border border-[#4fd1c5]/30">Approved</span>
+                                        ) : (
+                                            <span className="bg-[#FEF3C7] text-[#B7791F] px-3 py-1 rounded-full text-xs font-bold uppercase border border-[#B7791F]/20">Pending</span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Staff Licenses Row */}
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">📋</div>
+                                    <div>
+                                        <div className="font-bold text-slate-900">Staff Licenses</div>
+                                        <div className="text-xs text-slate-500">
+                                            {licenseStats.expired > 0 
+                                                ? `${licenseStats.expired} expired, ${licenseStats.valid} valid`
+                                                : `${licenseStats.valid} valid, ${licenseStats.expired} expired`
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                {licenseStats.expired > 0 ? (
+                                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase border border-red-200">Expired</span>
+                                ) : (
+                                    <span className="bg-[#e0f2f1] text-[#0f766e] px-3 py-1 rounded-full text-xs font-bold uppercase border border-[#4fd1c5]/30">All Valid</span>
+                                )}
+                            </div>
+
                             {/* Facility License Expiry Alerts */}
                             {(() => {
                                 const expiredFacilities = locations.filter(l => l.licenseExpiry && new Date(l.licenseExpiry) < new Date());
