@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Missing Payroll Entries</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a2e35;
+            margin-top: 0;
+        }
+        h2 {
+            color: #2c5f6f;
+            border-bottom: 2px solid #4fd1c5;
+            padding-bottom: 8px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 4px;
+            color: #334155;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #1a2e35;
+            color: #4fd1c5;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #152428;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #6ee7b7;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+        }
+        .info {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #be123c;
+        }
+        .step {
+            background: #f8fafc;
+            border-left: 4px solid #4fd1c5;
+            padding: 12px 16px;
+            margin: 12px 0;
+        }
+        .step-number {
+            display: inline-block;
+            background: #4fd1c5;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Fix Missing Payroll Entries</h1>
+        <p>Use this tool to add staff members who were missed during payroll generation.</p>
+        
+        <div class="info">
+            <strong>⚠️ Important:</strong> The payroll period must be <strong>unfinalized</strong> before adding staff. If it's already finalized, unfinalize it first.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Method 1: Add Staff to Existing Period</h2>
+        <p>Use this if you want to add a specific staff member (like Linus) to an existing payroll period.</p>
+        
+        <div class="step">
+            <span class="step-number">1</span>
+            Open your browser console (F12) and run these commands:
+        </div>
+        
+        <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 6px; margin: 12px 0; overflow-x: auto;">
+            <pre style="margin: 0; font-family: monospace; font-size: 13px;">// First, import the service
+import { payrollService } from './lib/services';
+
+// Find Linus's staff ID from the Staff Management page
+// or run: const staff = await staffService.getAll('YOUR_ORG_ID');
+const staffId = 'LINUS_STAFF_ID_HERE';
+
+// Find the payroll period ID (from URL or Payroll page)
+const periodId = 'PERIOD_ID_HERE';
+const orgId = 'YOUR_ORG_ID_HERE';
+
+// If the period is finalized, unfinalize it first
+await payrollService.unfinalizePeriod(orgId, periodId);
+
+// Add Linus to the payroll
+const entry = await payrollService.addStaffToPayroll(orgId, periodId, staffId);
+console.log('Entry created:', entry);
+
+// Refinalize the period
+await payrollService.finalizePeriod(orgId, periodId);
+
+console.log('✅ Done! Linus should now see this payroll period.');</pre>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Method 2: Regenerate All Entries</h2>
+        <p>Use this if multiple staff members are missing. This deletes all entries and regenerates them.</p>
+        
+        <div class="step">
+            <span class="step-number">1</span>
+            Ensure all staff who should be included have <code>staffStatus: 'Active'</code>
+        </div>
+        
+        <div class="step">
+            <span class="step-number">2</span>
+            Open browser console and run:
+        </div>
+        
+        <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 6px; margin: 12px 0; overflow-x: auto;">
+            <pre style="margin: 0; font-family: monospace; font-size: 13px;">import { payrollService } from './lib/services';
+
+const periodId = 'PERIOD_ID_HERE';
+const orgId = 'YOUR_ORG_ID_HERE';
+
+// Unfinalize the period
+await payrollService.unfinalizePeriod(orgId, periodId);
+
+// Get all existing entries
+const entries = await payrollService.getEntries(orgId, periodId);
+
+// Delete all entries (manually delete from Firestore or use a loop)
+// This step requires direct Firestore access
+
+// Regenerate entries (will include all Active staff)
+const newEntries = await payrollService.generateEntries(orgId, periodId);
+console.log('Generated', newEntries.length, 'entries');
+
+// Refinalize
+await payrollService.finalizePeriod(orgId, periodId);
+
+console.log('✅ Done!');</pre>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Method 3: Check Staff Status First</h2>
+        <p>Before doing anything, check Linus's status:</p>
+        
+        <div style="background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 6px; margin: 12px 0; overflow-x: auto;">
+            <pre style="margin: 0; font-family: monospace; font-size: 13px;">import { staffService } from './lib/services';
+
+const orgId = 'YOUR_ORG_ID_HERE';
+const allStaff = await staffService.getAll(orgId);
+
+// Find Linus
+const linus = allStaff.find(s => s.fullName.includes('Linus'));
+console.log('Linus Status:', linus?.staffStatus);
+console.log('Linus ID:', linus?.id);
+
+// If status is not 'Active', update it:
+if (linus && linus.staffStatus !== 'Active') {
+    await staffService.update(linus.id, { staffStatus: 'Active' });
+    console.log('✅ Updated Linus to Active');
+}</pre>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Quick Steps Summary</h2>
+        <ol>
+            <li>Go to <strong>Staff Management</strong> → Find Linus Okei → Ensure status is <strong>"Active"</strong></li>
+            <li>Go to <strong>Payroll</strong> → Find the payroll period where Linus is missing</li>
+            <li>Copy the period ID from the URL or period details</li>
+            <li>Open browser console (F12)</li>
+            <li>Run the commands from Method 1 above</li>
+            <li>Check that Linus can now see the payroll in his "My Pay History" page</li>
+        </ol>
+        
+        <div class="success">
+            <strong>💡 Tip:</strong> For future payroll periods, just make sure all staff are marked as "Active" before generating payroll entries!
+        </div>
+    </div>
+</body>
+</html>

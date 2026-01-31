@@ -23,12 +23,22 @@ const PayHistoryRow: React.FC<{ period: PayrollPeriod; user: any; onView: () => 
 
     useEffect(() => {
         const fetchEntry = async () => {
+            // CRITICAL SECURITY CHECK: Ensure we have both user.id and user.organizationId
+            if (!user?.id || !user?.organizationId) {
+                console.error('[PayHistoryRow] Missing user.id or user.organizationId');
+                setLoading(false);
+                return;
+            }
+
             try {
-                // Determine if we can fetch optimized or need full entries
-                // For now, using existing service but we could optimize later
-                const entries = await payrollService.getEntries(user.organizationId, period.id);
-                const myEntry = entries.find(e => e.staffId === user.id);
-                setEntry(myEntry || null);
+                // SECURE APPROACH: Use getEntryForEmployee which filters by BOTH periodId AND staffId
+                // This ensures we can ONLY retrieve the logged-in employee's entry
+                const myEntry = await payrollService.getEntryForEmployee(
+                    user.organizationId,
+                    period.id!,
+                    user.id // This is the logged-in employee's ID - MUST match
+                );
+                setEntry(myEntry);
             } catch (error) {
                 console.error('Row load error', error);
             } finally {
@@ -36,7 +46,7 @@ const PayHistoryRow: React.FC<{ period: PayrollPeriod; user: any; onView: () => 
             }
         };
         fetchEntry();
-    }, [period.id, user.id, user.organizationId]);
+    }, [period.id, user?.id, user?.organizationId]);
 
     if (loading) {
         return (
@@ -111,35 +121,47 @@ const MyPayslips: React.FC = () => {
 
     // Define functions before useEffect
     const loadPeriods = async () => {
+        // CRITICAL SECURITY CHECK: Ensure user ID exists before proceeding
+        if (!user?.id || !user?.organizationId) {
+            console.error('[MyPayslips] Missing user.id or user.organizationId - cannot load pay history');
+            setError('Unable to load pay history. Please log out and log in again.');
+            setLoading(false);
+            return;
+        }
+
+        console.log('[MyPayslips] Loading pay history for:', {
+            userId: user.id,
+            userName: user.name,
+            organizationId: user.organizationId
+        });
+
         try {
             setLoading(true);
-            const allPeriods = await payrollService.getPeriods(user?.organizationId!);
+            
+            // SECURE APPROACH: Get periods that have entries for THIS specific employee
+            // This prevents any possibility of seeing other employees' data
+            const periodsWithMyEntries = await payrollService.getPeriodsWithEmployeeEntries(
+                user.organizationId,
+                user.id // This is the logged-in employee's ID
+            );
+
+            console.log('[MyPayslips] Periods with entries for user:', periodsWithMyEntries.length);
 
             // VISIBILITY RULE: Only show finalized periods AND 24 hours must have passed since finalization
             const now = new Date();
-            const visiblePeriods = allPeriods.filter(p => {
+            const visiblePeriods = periodsWithMyEntries.filter(p => {
                 if (!p.isFinalized || !p.finalizedAt) return false;
                 const finalizedTime = new Date(p.finalizedAt);
                 const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
                 return hoursDiff >= 24;
             });
 
-            // ADDITIONAL FILTER: Only show periods where the current user has a payroll entry
-            // This prevents showing "No Pay History Found" for periods where user wasn't included
-            const periodsWithUserEntries = await Promise.all(
-                visiblePeriods.map(async (period) => {
-                    try {
-                        const entries = await payrollService.getEntries(user?.organizationId!, period.id!);
-                        const hasEntry = entries.some(e => e.staffId === user?.id);
-                        return hasEntry ? period : null;
-                    } catch {
-                        return null;
-                    }
-                })
-            );
+            console.log('[MyPayslips] Visible periods (finalized + 24h):', visiblePeriods.length);
+
+            // Sort by start date descending (newest first)
+            visiblePeriods.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
             
-            const userPeriods = periodsWithUserEntries.filter((p): p is PayrollPeriod => p !== null);
-            setPeriods(userPeriods);
+            setPeriods(visiblePeriods);
         } catch (err) {
             console.error('Error loading payroll periods:', err);
             setError('Failed to load payroll periods');
@@ -166,10 +188,11 @@ const MyPayslips: React.FC = () => {
     };
 
     useEffect(() => {
-        if (user?.organizationId) {
+        // CRITICAL: Must have BOTH organizationId AND user.id to load pay history securely
+        if (user?.organizationId && user?.id) {
             loadPeriods();
         }
-    }, [user?.organizationId]);
+    }, [user?.organizationId, user?.id]);
 
     useEffect(() => {
         applyFilters();
@@ -210,9 +233,20 @@ const MyPayslips: React.FC = () => {
         setPayslipDetails(null);
         setError('');
 
+        // CRITICAL SECURITY CHECK: Ensure user ID exists
+        if (!user?.id || !user?.organizationId) {
+            setError('Unable to load payslip. Please log out and log in again.');
+            setLoadingDetails(false);
+            return;
+        }
+
         try {
-            const entries = await payrollService.getEntries(user?.organizationId!, period.id!);
-            const myEntry = entries.find(e => e.staffId === user?.id);
+            // SECURE APPROACH: Use getEntryForEmployee to fetch ONLY the logged-in employee's entry
+            const myEntry = await payrollService.getEntryForEmployee(
+                user.organizationId,
+                period.id!,
+                user.id // This is the logged-in employee's ID
+            );
 
             if (myEntry) {
                 setPayslipDetails(myEntry);
