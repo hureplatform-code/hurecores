@@ -303,77 +303,54 @@ const DashboardHome: React.FC = () => {
                                 {getVerificationBadge(org?.orgStatus || 'Unverified')}
                             </div>
 
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">🏥</div>
-                                    <div>
-                                        <div className="font-bold text-slate-900">Facility Licenses</div>
-                                        <div className="text-xs text-slate-500">{verifiedLocations} of {locations.length} locations verified</div>
-                                    </div>
-                                </div>
-                                {verifiedLocations === locations.length && locations.length > 0 ? (
-                                    <span className="bg-[#e0f2f1] text-[#0f766e] px-3 py-1 rounded-full text-xs font-bold uppercase border border-[#4fd1c5]/30">Approved</span>
-                                ) : verifiedLocations > 0 ? (
-                                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>
-                                ) : (
-                                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Pending</span>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">👨‍⚕️</div>
-                                    <div>
-                                        <div className="font-bold text-slate-900">Staff Licenses</div>
-                                        <div className="text-xs text-slate-500">
-                                            {licenseStats.total > 0 
-                                                ? `${licenseStats.valid} valid, ${licenseStats.expired} expired${licenseStats.expiringSoon > 0 ? `, ${licenseStats.expiringSoon} expiring soon` : ''}`
-                                                : '0 licenses added'}
+                            {/* Facility License Expiry Alerts */}
+                            {(() => {
+                                const expiredFacilities = locations.filter(l => l.licenseExpiry && new Date(l.licenseExpiry) < new Date());
+                                const expiringSoonFacilities = locations.filter(l => {
+                                    if (!l.licenseExpiry) return false;
+                                    const expiry = new Date(l.licenseExpiry);
+                                    const now = new Date();
+                                    const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                    return daysUntil > 0 && daysUntil <= 30;
+                                });
+                                
+                                if (expiredFacilities.length > 0 || expiringSoonFacilities.length > 0) {
+                                    return (
+                                        <div className={`p-4 rounded-xl border ${expiredFacilities.length > 0 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                                            <div className="flex items-start space-x-3">
+                                                <span className="text-lg">{expiredFacilities.length > 0 ? '🚨' : '⚠️'}</span>
+                                                <div className="flex-1">
+                                                    <h4 className={`font-bold text-sm ${expiredFacilities.length > 0 ? 'text-red-800' : 'text-amber-800'}`}>
+                                                        {expiredFacilities.length > 0 ? 'Facility License Expired' : 'Facility License Expiring Soon'}
+                                                    </h4>
+                                                    <ul className="mt-2 space-y-1 text-xs">
+                                                        {expiredFacilities.slice(0, 3).map((loc, idx) => (
+                                                            <li key={idx} className="text-red-700">
+                                                                <span className="font-medium">{loc.name}</span> - license expired
+                                                            </li>
+                                                        ))}
+                                                        {expiringSoonFacilities.slice(0, 3).map((loc, idx) => {
+                                                            const daysLeft = Math.ceil((new Date(loc.licenseExpiry!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                            return (
+                                                                <li key={idx} className="text-amber-700">
+                                                                    <span className="font-medium">{loc.name}</span> - expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                    <a
+                                                        href="#/employer/locations"
+                                                        className={`inline-block mt-3 text-xs font-bold ${expiredFacilities.length > 0 ? 'text-red-700 hover:text-red-800' : 'text-amber-700 hover:text-amber-800'}`}
+                                                    >
+                                                        Go to Locations & Facilities →
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                                {licenseStats.total === 0 ? (
-                                    <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Not Started</span>
-                                ) : licenseStats.expired > 0 ? (
-                                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase border border-red-200">{licenseStats.expired} Expired</span>
-                                ) : licenseStats.expiringSoon > 0 ? (
-                                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase border border-amber-200">{licenseStats.expiringSoon} Expiring Soon</span>
-                                ) : (
-                                    <span className="bg-[#e0f2f1] text-[#0f766e] px-3 py-1 rounded-full text-xs font-bold uppercase border border-[#4fd1c5]/30">All Valid</span>
-                                )}
-                            </div>
-
-                            {/* License Expiry Alerts */}
-                            {(licenseStats.expired > 0 || licenseStats.expiringSoon > 0) && (
-                                <div className={`mt-4 p-4 rounded-xl border ${licenseStats.expired > 0 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                                    <div className="flex items-start space-x-3">
-                                        <span className="text-lg">{licenseStats.expired > 0 ? '🚨' : '⚠️'}</span>
-                                        <div className="flex-1">
-                                            <h4 className={`font-bold text-sm ${licenseStats.expired > 0 ? 'text-red-800' : 'text-amber-800'}`}>
-                                                {licenseStats.expired > 0 ? 'Staff License Expired' : 'Staff Licenses Expiring Soon'}
-                                            </h4>
-                                            <ul className="mt-2 space-y-1 text-xs">
-                                                {licenseStats.expiredList.slice(0, 3).map((item, idx) => (
-                                                    <li key={idx} className="text-red-700">
-                                                        <span className="font-medium">{item.name}</span> - expired {new Date(item.expiryDate).toLocaleDateString()}
-                                                    </li>
-                                                ))}
-                                                {licenseStats.expiringSoonList.slice(0, 3).map((item, idx) => (
-                                                    <li key={idx} className="text-amber-700">
-                                                        <span className="font-medium">{item.name}</span> - expires in {item.daysLeft} day{item.daysLeft !== 1 ? 's' : ''}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                            <a
-                                                href="#/employer/staff"
-                                                className={`inline-block mt-3 text-xs font-bold ${licenseStats.expired > 0 ? 'text-red-700 hover:text-red-800' : 'text-amber-700 hover:text-amber-800'}`}
-                                            >
-                                                Go to Staff Management →
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                     </div>
 
