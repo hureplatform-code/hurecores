@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { siteContentService, DEFAULT_LANDING_CONTENT, LandingPageContent } from '../../lib/services/siteContent.service';
 import { motion, AnimatePresence } from 'framer-motion';
+import { storage } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function SiteContentManager() {
     const [content, setContent] = useState<LandingPageContent>(DEFAULT_LANDING_CONTENT);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
-    const [activeTab, setActiveTab] = useState<'general' | 'features' | 'plans' | 'faqs'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'features' | 'plans' | 'faqs' | 'images'>('general');
 
     useEffect(() => {
         loadContent();
@@ -81,12 +84,49 @@ export default function SiteContentManager() {
         setContent({ ...content, faqs: newFaqs });
     };
 
+    // Handle image upload
+    const handleImageUpload = async (file: File, type: 'heroImage' | 'logo') => {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', 'error');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            // Create storage reference with timestamp to avoid caching issues
+            const timestamp = Date.now();
+            const fileName = `${type}_${timestamp}_${file.name}`;
+            const storageRef = ref(storage, `site-content/${fileName}`);
+            
+            // Upload file
+            await uploadBytes(storageRef, file);
+            
+            // Get download URL
+            const downloadURL = await getDownloadURL(storageRef);
+            
+            // Update content based on type
+            if (type === 'heroImage') {
+                setContent({ ...content, heroImageUrl: downloadURL });
+            } else if (type === 'logo') {
+                setContent({ ...content, logoUrl: downloadURL });
+            }
+            
+            showToast(`${type === 'heroImage' ? 'Hero image' : 'Logo'} uploaded successfully!`, 'success');
+        } catch (error) {
+            console.error('Upload error:', error);
+            showToast('Failed to upload image. Please try again.', 'error');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     if (loading) {
         return <div className="p-8 text-center text-slate-500 animate-pulse">Loading content editor...</div>;
     }
 
     const tabs = [
         { id: 'general', label: 'General Text' },
+        { id: 'images', label: 'Images & Logo' },
         { id: 'features', label: 'Features Grid' },
         { id: 'plans', label: 'Pricing Plans' },
         { id: 'faqs', label: 'FAQs' },
@@ -173,6 +213,111 @@ export default function SiteContentManager() {
                                     <Field label="Footer Blurb" value={content.footerBlurb} onChange={v => setContent({ ...content, footerBlurb: v })} textarea />
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* IMAGES TAB */}
+                {activeTab === 'images' && (
+                    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="bg-blue-50 text-blue-700 p-4 rounded-xl text-sm mb-6">
+                            <strong>Note:</strong> Upload images for your website. Recommended sizes: Hero image (1200x600px), Logo (300x100px). Supported formats: JPG, PNG, WebP.
+                        </div>
+
+                        {/* Hero Image Upload */}
+                        <div className="border border-slate-200 rounded-xl p-6 bg-white">
+                            <h4 className="text-lg font-bold text-slate-900 mb-4">Hero Image</h4>
+                            <p className="text-sm text-slate-500 mb-4">This is the main image displayed in the hero section of your landing page.</p>
+                            
+                            {content.heroImageUrl && (
+                                <div className="mb-4">
+                                    <img 
+                                        src={content.heroImageUrl} 
+                                        alt="Hero" 
+                                        className="w-full max-w-2xl h-48 object-cover rounded-lg border border-slate-200"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-2">Current hero image</p>
+                                </div>
+                            )}
+                            
+                            <div className="flex items-center gap-4">
+                                <label className="cursor-pointer">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleImageUpload(file, 'heroImage');
+                                        }}
+                                        className="hidden"
+                                        disabled={uploading}
+                                    />
+                                    <span className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {uploading ? 'Uploading...' : 'Upload Hero Image'}
+                                    </span>
+                                </label>
+                                {content.heroImageUrl && (
+                                    <button
+                                        onClick={() => setContent({ ...content, heroImageUrl: undefined })}
+                                        className="px-4 py-2.5 text-red-600 hover:bg-red-50 font-semibold rounded-xl transition-colors"
+                                    >
+                                        Remove Image
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Logo Upload */}
+                        <div className="border border-slate-200 rounded-xl p-6 bg-white">
+                            <h4 className="text-lg font-bold text-slate-900 mb-4">Site Logo</h4>
+                            <p className="text-sm text-slate-500 mb-4">Your company logo displayed in the navigation bar and footer.</p>
+                            
+                            {content.logoUrl && (
+                                <div className="mb-4">
+                                    <img 
+                                        src={content.logoUrl} 
+                                        alt="Logo" 
+                                        className="h-16 object-contain bg-slate-50 p-4 rounded-lg border border-slate-200"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-2">Current logo</p>
+                                </div>
+                            )}
+                            
+                            <div className="flex items-center gap-4">
+                                <label className="cursor-pointer">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleImageUpload(file, 'logo');
+                                        }}
+                                        className="hidden"
+                                        disabled={uploading}
+                                    />
+                                    <span className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {uploading ? 'Uploading...' : 'Upload Logo'}
+                                    </span>
+                                </label>
+                                {content.logoUrl && (
+                                    <button
+                                        onClick={() => setContent({ ...content, logoUrl: undefined })}
+                                        className="px-4 py-2.5 text-red-600 hover:bg-red-50 font-semibold rounded-xl transition-colors"
+                                    >
+                                        Remove Logo
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm">
+                            <strong>Remember:</strong> After uploading images, click the "Save Changes" button at the top to apply them to your website.
                         </div>
                     </div>
                 )}

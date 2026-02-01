@@ -6,6 +6,7 @@ export interface LandingPageContent {
     heroHeadlineHighlight: string;
     heroBody: string;
     heroNote: string;
+    heroImageUrl?: string; // Main hero image
     pricingEyebrow: string;
     pricingTitle: string;
     pricingCtaLine1: string;
@@ -14,6 +15,7 @@ export interface LandingPageContent {
     contactTitle: string;
     contactBody: string;
     footerBlurb: string;
+    logoUrl?: string; // Site logo
     plans: Array<{
         key: string;
         name: string;
