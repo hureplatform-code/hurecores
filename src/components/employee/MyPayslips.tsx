@@ -154,7 +154,8 @@ const MyPayslips: React.FC = () => {
                 finalizedAt: p.finalizedAt
             })));
 
-            // VISIBILITY RULE: Only show finalized periods AND 24 hours must have passed since finalization
+            // VISIBILITY RULE: Only show finalized periods AND 1 hour must have passed since finalization
+            // TODO: Change back to 24 hours for production
             const now = new Date();
             const visiblePeriods = periodsWithMyEntries.filter(p => {
                 if (!p.isFinalized) {
@@ -168,10 +169,10 @@ const MyPayslips: React.FC = () => {
                 }
                 const finalizedTime = new Date(p.finalizedAt);
                 const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
-                if (hoursDiff < 24) {
-                    console.log('[MyPayslips] Skipping period (less than 24h since finalization):', p.name, 'hours:', hoursDiff.toFixed(1));
+                if (hoursDiff < 1) {
+                    console.log('[MyPayslips] Skipping period (less than 1h since finalization):', p.name, 'hours:', hoursDiff.toFixed(1));
                 }
-                return hoursDiff >= 24;
+                return hoursDiff >= 1; // Changed from 24 to 1 for testing
             });
 
             console.log('[MyPayslips] Visible periods (finalized + 24h rule passed):', visiblePeriods.length);
