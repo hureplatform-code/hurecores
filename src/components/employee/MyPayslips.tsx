@@ -137,6 +137,7 @@ const MyPayslips: React.FC = () => {
 
         try {
             setLoading(true);
+            setError(''); // Clear any previous errors
             
             // SECURE APPROACH: Get periods that have entries for THIS specific employee
             // This prevents any possibility of seeing other employees' data
@@ -146,25 +147,47 @@ const MyPayslips: React.FC = () => {
             );
 
             console.log('[MyPayslips] Periods with entries for user:', periodsWithMyEntries.length);
+            console.log('[MyPayslips] Period details:', periodsWithMyEntries.map(p => ({
+                id: p.id,
+                name: p.name,
+                isFinalized: p.isFinalized,
+                finalizedAt: p.finalizedAt
+            })));
 
             // VISIBILITY RULE: Only show finalized periods AND 24 hours must have passed since finalization
             const now = new Date();
             const visiblePeriods = periodsWithMyEntries.filter(p => {
-                if (!p.isFinalized || !p.finalizedAt) return false;
+                if (!p.isFinalized) {
+                    console.log('[MyPayslips] Skipping period (not finalized):', p.name);
+                    return false;
+                }
+                if (!p.finalizedAt) {
+                    console.log('[MyPayslips] Period finalized but no finalizedAt timestamp:', p.name);
+                    // Allow it if isFinalized is true but no timestamp (legacy data)
+                    return true;
+                }
                 const finalizedTime = new Date(p.finalizedAt);
                 const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
+                if (hoursDiff < 24) {
+                    console.log('[MyPayslips] Skipping period (less than 24h since finalization):', p.name, 'hours:', hoursDiff.toFixed(1));
+                }
                 return hoursDiff >= 24;
             });
 
-            console.log('[MyPayslips] Visible periods (finalized + 24h):', visiblePeriods.length);
+            console.log('[MyPayslips] Visible periods (finalized + 24h rule passed):', visiblePeriods.length);
 
             // Sort by start date descending (newest first)
             visiblePeriods.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
             
             setPeriods(visiblePeriods);
-        } catch (err) {
-            console.error('Error loading payroll periods:', err);
-            setError('Failed to load payroll periods');
+        } catch (err: any) {
+            console.error('[MyPayslips] Error loading payroll periods:', err);
+            // Check for Firestore permission errors
+            if (err?.code === 'permission-denied') {
+                setError('Access denied. Please contact your administrator.');
+            } else {
+                setError('Failed to load payroll periods. Please try again later.');
+            }
         } finally {
             setLoading(false);
         }

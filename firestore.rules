@@ -207,12 +207,23 @@ service cloud.firestore {
         allow create: if isAuthenticated();
       }
       
-      // Payroll
+      // Payroll Periods
+      // Employees can read finalized periods (for My Pay History view)
+      // Only admins can create/update/delete periods
       match /payrollPeriods/{periodId} {
+        // Admins: full read/write access
         allow read, write: if isOrgAdmin(orgId) || isSuperAdmin();
+        // Staff: can read ONLY finalized periods (for pay history)
+        allow read: if isOrgStaff(orgId) && resource.data.isFinalized == true;
       }
+      
+      // Payroll Entries
       match /payrollEntries/{entryId} {
-         allow read: if isOrgAdmin(orgId) || isSuperAdmin() || (isOrgStaff(orgId) && resource.data.staffId == request.auth.uid);
+         // Admins: full access to all entries
+         allow read: if isOrgAdmin(orgId) || isSuperAdmin();
+         // Staff: can ONLY read their own entries (staffId must match their auth UID)
+         allow read: if isOrgStaff(orgId) && resource.data.staffId == request.auth.uid;
+         // Only admins can write entries
          allow write: if isOrgAdmin(orgId) || isSuperAdmin();
       }
       

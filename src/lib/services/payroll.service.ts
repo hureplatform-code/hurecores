@@ -469,19 +469,39 @@ export const payrollService = {
    * Used for My Pay History view to only show periods relevant to the employee
    */
   async getPeriodsWithEmployeeEntries(organizationId: string, staffId: string): Promise<PayrollPeriod[]> {
+    console.log('[payrollService] getPeriodsWithEmployeeEntries called:', { organizationId, staffId });
+    
     // First get all entries for this employee
     const entries = await this.getEntriesForEmployee(organizationId, staffId);
+    console.log('[payrollService] Found payroll entries for employee:', entries.length);
+    
+    if (entries.length === 0) {
+      console.log('[payrollService] No payroll entries found for this employee');
+      return [];
+    }
     
     // Get unique period IDs
     const periodIds = [...new Set(entries.map(e => e.payrollPeriodId))];
+    console.log('[payrollService] Unique period IDs to fetch:', periodIds);
     
-    // Fetch all those periods
-    const periods = await Promise.all(
-      periodIds.map(periodId => this.getPeriodById(organizationId, periodId))
-    );
+    // Fetch all those periods - wrapped in try/catch for each period
+    // because security rules may block access to unfinalized periods
+    const periods: PayrollPeriod[] = [];
+    for (const periodId of periodIds) {
+      try {
+        const period = await this.getPeriodById(organizationId, periodId);
+        if (period) {
+          periods.push(period);
+          console.log('[payrollService] Successfully fetched period:', periodId, 'isFinalized:', period.isFinalized);
+        }
+      } catch (err) {
+        // This is expected for unfinalized periods when accessed by non-admin users
+        console.log('[payrollService] Could not fetch period (likely unfinalized or permission denied):', periodId);
+      }
+    }
     
-    // Filter out nulls and return
-    return periods.filter((p): p is PayrollPeriod => p !== null);
+    console.log('[payrollService] Total periods fetched:', periods.length);
+    return periods;
   },
 
   /**
