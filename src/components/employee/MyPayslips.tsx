@@ -98,7 +98,7 @@ const PayHistoryRow: React.FC<{ period: PayrollPeriod; user: any; onView: () => 
 const MyPayslips: React.FC = () => {
     const { user } = useAuth();
     const { isVerified } = useTrialStatus();
-    
+
     // ALL hooks must be declared before any conditional returns
     const [loading, setLoading] = useState(true);
     const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
@@ -118,6 +118,16 @@ const MyPayslips: React.FC = () => {
     const [payslipDetails, setPayslipDetails] = useState<PayrollEntry | null>(null);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [error, setError] = useState('');
+    const [debugInfo, setDebugInfo] = useState<{
+        userId: string;
+        userEmail: string;
+        orgId: string;
+        totalEntriesFound: number;
+        totalPeriodsFound: number;
+        visiblePeriodsCount: number;
+        hiddenByFinalization: number;
+        hiddenByTimeDelay: number;
+    } | null>(null);
 
     // Define functions before useEffect
     const loadPeriods = async () => {
@@ -131,22 +141,31 @@ const MyPayslips: React.FC = () => {
 
         console.log('[MyPayslips] Loading pay history for:', {
             userId: user.id,
+            userEmail: user.email,
             userName: user.name,
-            organizationId: user.organizationId
+            organizationId: user.organizationId,
+            systemRole: user.systemRole
         });
 
         try {
             setLoading(true);
             setError(''); // Clear any previous errors
-            
+
             // SECURE APPROACH: Get periods that have entries for THIS specific employee
             // This prevents any possibility of seeing other employees' data
+            console.log('[MyPayslips] Calling getPeriodsWithEmployeeEntries with staffId:', user.id);
             const periodsWithMyEntries = await payrollService.getPeriodsWithEmployeeEntries(
                 user.organizationId,
                 user.id // This is the logged-in employee's ID
             );
 
             console.log('[MyPayslips] Periods with entries for user:', periodsWithMyEntries.length);
+            if (periodsWithMyEntries.length === 0) {
+                console.warn('[MyPayslips] NO PAYROLL ENTRIES FOUND. This could mean:');
+                console.warn('  1. No payroll has been generated for this employee');
+                console.warn('  2. The staffId in payroll entries does not match user.id:', user.id);
+                console.warn('  3. The organization ID is wrong:', user.organizationId);
+            }
             console.log('[MyPayslips] Period details:', periodsWithMyEntries.map(p => ({
                 id: p.id,
                 name: p.name,
@@ -175,11 +194,34 @@ const MyPayslips: React.FC = () => {
                 return hoursDiff >= 1; // Changed from 24 to 1 for testing
             });
 
-            console.log('[MyPayslips] Visible periods (finalized + 24h rule passed):', visiblePeriods.length);
+            // Calculate debug stats
+            const notFinalizedCount = periodsWithMyEntries.filter(p => !p.isFinalized).length;
+            const hiddenByTimeCount = periodsWithMyEntries.filter(p => {
+                if (!p.isFinalized || !p.finalizedAt) return false;
+                const finalizedTime = new Date(p.finalizedAt);
+                const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
+                return hoursDiff < 1;
+            }).length;
+
+            // Set debug info for admin visibility
+            setDebugInfo({
+                userId: user.id,
+                userEmail: user.email || 'N/A',
+                orgId: user.organizationId,
+                totalEntriesFound: periodsWithMyEntries.length,
+                totalPeriodsFound: periodsWithMyEntries.length,
+                visiblePeriodsCount: visiblePeriods.length,
+                hiddenByFinalization: notFinalizedCount,
+                hiddenByTimeDelay: hiddenByTimeCount
+            });
+
+            console.log('[MyPayslips] Visible periods (finalized + 1h rule passed):', visiblePeriods.length);
+            console.log('[MyPayslips] Hidden by not finalized:', notFinalizedCount);
+            console.log('[MyPayslips] Hidden by time delay (< 1h):', hiddenByTimeCount);
 
             // Sort by start date descending (newest first)
             visiblePeriods.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-            
+
             setPeriods(visiblePeriods);
         } catch (err: any) {
             console.error('[MyPayslips] Error loading payroll periods:', err);
@@ -375,7 +417,33 @@ const MyPayslips: React.FC = () => {
                         <h3 className="text-lg font-semibold text-slate-900 mb-2">No Pay History Found</h3>
                         <p className="text-slate-500">No finalized payroll periods found for your account in this date range.</p>
                         <p className="text-xs text-slate-400 mt-2">If you believe this is an error, please contact your administrator.</p>
+
+                        {/* Debug info for troubleshooting */}
+                        {debugInfo && (
+                            <div className="mt-6 p-4 bg-slate-100 rounded-lg text-left text-xs font-mono border border-slate-200">
+                                <p className="font-bold text-slate-700 mb-2">🔍 Debug Info (for admin troubleshooting):</p>
+                                <ul className="space-y-1 text-slate-600">
+                                    <li><span className="text-slate-500">User ID:</span> {debugInfo.userId}</li>
+                                    <li><span className="text-slate-500">Email:</span> {debugInfo.userEmail}</li>
+                                    <li><span className="text-slate-500">Org ID:</span> {debugInfo.orgId}</li>
+                                    <li><span className="text-slate-500">Total entries found:</span> <span className={debugInfo.totalEntriesFound === 0 ? 'text-red-600 font-bold' : ''}>{debugInfo.totalEntriesFound}</span></li>
+                                    <li><span className="text-slate-500">Hidden (not finalized):</span> {debugInfo.hiddenByFinalization}</li>
+                                    <li><span className="text-slate-500">Hidden ({"<"}1h since finalize):</span> {debugInfo.hiddenByTimeDelay}</li>
+                                    <li><span className="text-slate-500">Visible periods:</span> {debugInfo.visiblePeriodsCount}</li>
+                                </ul>
+                                {debugInfo.totalEntriesFound === 0 && (
+                                    <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-amber-700">
+                                        ⚠️ No payroll entries exist for this user ID. Check if:
+                                        <ol className="list-decimal ml-4 mt-1">
+                                            <li>Payroll has been generated for this employee</li>
+                                            <li>The staffId in payroll entries matches this user ID</li>
+                                        </ol>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
+
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full">
