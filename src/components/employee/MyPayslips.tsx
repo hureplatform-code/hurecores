@@ -173,9 +173,7 @@ const MyPayslips: React.FC = () => {
                 finalizedAt: p.finalizedAt
             })));
 
-            // VISIBILITY RULE: Only show finalized periods AND 1 hour must have passed since finalization
-            // TODO: Change back to 24 hours for production
-            const now = new Date();
+            // VISIBILITY RULE: Only show finalized periods
             const visiblePeriods = periodsWithMyEntries.filter(p => {
                 if (!p.isFinalized) {
                     console.log('[MyPayslips] Skipping period (not finalized):', p.name);
@@ -186,22 +184,12 @@ const MyPayslips: React.FC = () => {
                     // Allow it if isFinalized is true but no timestamp (legacy data)
                     return true;
                 }
-                const finalizedTime = new Date(p.finalizedAt);
-                const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
-                if (hoursDiff < 1) {
-                    console.log('[MyPayslips] Skipping period (less than 1h since finalization):', p.name, 'hours:', hoursDiff.toFixed(1));
-                }
-                return hoursDiff >= 1; // Changed from 24 to 1 for testing
+                return true;
             });
 
             // Calculate debug stats
             const notFinalizedCount = periodsWithMyEntries.filter(p => !p.isFinalized).length;
-            const hiddenByTimeCount = periodsWithMyEntries.filter(p => {
-                if (!p.isFinalized || !p.finalizedAt) return false;
-                const finalizedTime = new Date(p.finalizedAt);
-                const hoursDiff = (now.getTime() - finalizedTime.getTime()) / (1000 * 60 * 60);
-                return hoursDiff < 1;
-            }).length;
+            const hiddenByTimeCount = 0;
 
             // Set debug info for admin visibility
             setDebugInfo({
@@ -215,9 +203,9 @@ const MyPayslips: React.FC = () => {
                 hiddenByTimeDelay: hiddenByTimeCount
             });
 
-            console.log('[MyPayslips] Visible periods (finalized + 1h rule passed):', visiblePeriods.length);
+            console.log('[MyPayslips] Visible periods (finalized):', visiblePeriods.length);
             console.log('[MyPayslips] Hidden by not finalized:', notFinalizedCount);
-            console.log('[MyPayslips] Hidden by time delay (< 1h):', hiddenByTimeCount);
+            console.log('[MyPayslips] Hidden by time delay:', hiddenByTimeCount);
 
             // Sort by start date descending (newest first)
             visiblePeriods.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
@@ -428,7 +416,7 @@ const MyPayslips: React.FC = () => {
                                     <li><span className="text-slate-500">Org ID:</span> {debugInfo.orgId}</li>
                                     <li><span className="text-slate-500">Total entries found:</span> <span className={debugInfo.totalEntriesFound === 0 ? 'text-red-600 font-bold' : ''}>{debugInfo.totalEntriesFound}</span></li>
                                     <li><span className="text-slate-500">Hidden (not finalized):</span> {debugInfo.hiddenByFinalization}</li>
-                                    <li><span className="text-slate-500">Hidden ({"<"}1h since finalize):</span> {debugInfo.hiddenByTimeDelay}</li>
+                                    <li><span className="text-slate-500">Hidden (time delay):</span> {debugInfo.hiddenByTimeDelay}</li>
                                     <li><span className="text-slate-500">Visible periods:</span> {debugInfo.visiblePeriodsCount}</li>
                                 </ul>
                                 {debugInfo.totalEntriesFound === 0 && (

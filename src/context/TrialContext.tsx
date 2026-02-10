@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { organizationService } from '../lib/services/organization.service';
+import { BILLING_CONFIG } from '../lib/billing.config';
 import type { Organization, Subscription } from '../types';
 
 interface TrialContextType {
@@ -118,21 +119,25 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const calculateTrialInfo = () => {
         const now = new Date();
         let trialEndDate: Date | null = null;
+        const trialDays = subscription?.trialDays ?? BILLING_CONFIG.TRIAL_DAYS;
 
         if (subscription?.trialEndsAt) {
             trialEndDate = new Date(subscription.trialEndsAt);
+        } else if (subscription?.trialStartedAt) {
+            trialEndDate = new Date(subscription.trialStartedAt);
+            trialEndDate.setDate(trialEndDate.getDate() + trialDays);
         } else if (organization?.verifiedAt) {
             // Start trial from verification date
             trialEndDate = new Date(organization.verifiedAt);
-            trialEndDate.setDate(trialEndDate.getDate() + 10); // 10 days trial
+            trialEndDate.setDate(trialEndDate.getDate() + trialDays);
         } else if (organization?.approvedAt) {
             // Fallback for organizations with approvedAt field (legacy)
             trialEndDate = new Date(organization.approvedAt);
-            trialEndDate.setDate(trialEndDate.getDate() + 10);
+            trialEndDate.setDate(trialEndDate.getDate() + trialDays);
         } else if (organization?.orgStatus === 'Verified' && organization?.createdAt) {
             // Fallback for verified orgs without verifiedAt/approvedAt (legacy)
             trialEndDate = new Date(organization.createdAt);
-            trialEndDate.setDate(trialEndDate.getDate() + 10);
+            trialEndDate.setDate(trialEndDate.getDate() + trialDays);
         }
 
         if (!trialEndDate) {
@@ -160,8 +165,12 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const trialInfo = calculateTrialInfo();
 
     // Determine status
-    const isTrial = subscription?.status === 'Trial' || (!subscription?.status && !trialInfo.isExpired);
-    const isActive = subscription?.status === 'Active';
+    const normalizedStatus = (subscription?.status || '').toString().toLowerCase();
+    const normalizedBillingState = (subscription?.billingState || '').toString().toLowerCase();
+    const isTrial = normalizedBillingState === 'trial'
+        || normalizedStatus === 'trial'
+        || (!subscription?.status && !subscription?.billingState && !trialInfo.isExpired);
+    const isActive = normalizedBillingState === 'active' || normalizedStatus === 'active';
     const isInactive = trialInfo.isExpired && !isActive;
     // Organization is verified if orgStatus OR approvalStatus is 'Verified' or 'Active'
     // (handles both old orgStatus field and new approvalStatus field)
@@ -176,6 +185,8 @@ export const TrialProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log('[TrialContext] Status check:', {
         orgStatus: orgData?.orgStatus,
         approvalStatus: orgData?.approvalStatus,
+        subscriptionStatus: subscription?.status,
+        billingState: subscription?.billingState,
         isVerified,
         isTrial,
         isActive,
