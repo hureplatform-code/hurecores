@@ -61,11 +61,12 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
             });
         } catch (error) {
             console.error('Error checking subscription access:', error);
-            // Allow access on error to prevent blocking users
+            // Block access on error - safer than allowing unrestricted access
             setState({
                 loading: false,
-                canAccess: true,
-                billingState: 'TRIAL',
+                canAccess: allowBillingAccess || allowVerificationAccess,
+                billingState: 'SUSPENDED',
+                reason: 'Unable to verify subscription. Please check your billing status or contact support.',
             });
         }
     };

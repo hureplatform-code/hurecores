@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { TrialProvider } from '../context/TrialContext';
+import SubscriptionGuard from '../components/common/SubscriptionGuard';
 import EmployeeSidebar from '../components/employee/EmployeeSidebar';
 import EmployeeTopBar from '../components/employee/EmployeeTopBar';
 
@@ -55,59 +56,61 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
                />
 
                <main className="flex-1 overflow-y-auto">
-                  <Routes>
-                     {/* Personal Routes - Always available */}
-                     <Route path="/" element={<DashboardView />} />
-                     <Route path="/dashboard" element={<DashboardView />} />
-                     <Route path="/schedule" element={<MySchedule />} />
-                     <Route path="/attendance" element={<MyAttendance />} />
-                     <Route path="/leave" element={<MyLeave />} />
-                     <Route path="/payslips" element={<MyPayslips />} />
-                     <Route path="/documents" element={<MyDocuments />} />
-                     <Route path="/profile" element={<MyProfile />} />
+                  <SubscriptionGuard>
+                     <Routes>
+                        {/* Personal Routes - Always available */}
+                        <Route path="/" element={<DashboardView />} />
+                        <Route path="/dashboard" element={<DashboardView />} />
+                        <Route path="/schedule" element={<MySchedule />} />
+                        <Route path="/attendance" element={<MyAttendance />} />
+                        <Route path="/leave" element={<MyLeave />} />
+                        <Route path="/payslips" element={<MyPayslips />} />
+                        <Route path="/documents" element={<MyDocuments />} />
+                        <Route path="/profile" element={<MyProfile />} />
 
-                     {/* Manager Routes - Permission-based */}
-                     {canAccessManager && (
-                        <>
-                           <Route path="/manager" element={<ManagerDashboard />} />
+                        {/* Manager Routes - Permission-based */}
+                        {canAccessManager && (
+                           <>
+                              <Route path="/manager" element={<ManagerDashboard />} />
 
-                           {/* Staff Management */}
-                           {(isOwner || permissions?.staffManagement) && (
-                              <Route path="/manager/staff" element={<ManagerStaff />} />
-                           )}
+                              {/* Staff Management */}
+                              {(isOwner || permissions?.staffManagement) && (
+                                 <Route path="/manager/staff" element={<ManagerStaff />} />
+                              )}
 
-                           {/* Scheduling */}
-                           {(isOwner || permissions?.scheduling) && (
-                              <Route path="/manager/schedule" element={<ManagerSchedule />} />
-                           )}
+                              {/* Scheduling */}
+                              {(isOwner || permissions?.scheduling) && (
+                                 <Route path="/manager/schedule" element={<ManagerSchedule />} />
+                              )}
 
-                           {/* Attendance */}
-                           {(isOwner || permissions?.attendance) && (
-                              <Route path="/manager/attendance" element={<ManagerAttendance />} />
-                           )}
+                              {/* Attendance */}
+                              {(isOwner || permissions?.attendance) && (
+                                 <Route path="/manager/attendance" element={<ManagerAttendance />} />
+                              )}
 
-                           {/* Leave Approvals */}
-                           {(isOwner || permissions?.leave) && (
-                              <Route path="/manager/leave" element={<ManagerLeave />} />
-                           )}
+                              {/* Leave Approvals */}
+                              {(isOwner || permissions?.leave) && (
+                                 <Route path="/manager/leave" element={<ManagerLeave />} />
+                              )}
 
-                           {/* Documents */}
-                           {(isOwner || permissions?.documentsAndPolicies) && (
-                              <Route path="/manager/documents" element={<ManagerDocuments />} />
-                           )}
+                              {/* Documents */}
+                              {(isOwner || permissions?.documentsAndPolicies) && (
+                                 <Route path="/manager/documents" element={<ManagerDocuments />} />
+                              )}
 
-                           {/* Payroll */}
-                           {(isOwner || permissions?.payroll) && (
-                              <Route path="/manager/payroll" element={<ManagerPayroll />} />
-                           )}
+                              {/* Payroll */}
+                              {(isOwner || permissions?.payroll) && (
+                                 <Route path="/manager/payroll" element={<ManagerPayroll />} />
+                              )}
 
-                           {/* Settings */}
-                           {(isOwner || permissions?.settingsAdmin) && (
-                              <Route path="/manager/settings" element={<ManagerSettings />} />
-                           )}
-                        </>
-                     )}
-                  </Routes>
+                              {/* Settings */}
+                              {(isOwner || permissions?.settingsAdmin) && (
+                                 <Route path="/manager/settings" element={<ManagerSettings />} />
+                              )}
+                           </>
+                        )}
+                     </Routes>
+                  </SubscriptionGuard>
                </main>
             </div>
          </div>

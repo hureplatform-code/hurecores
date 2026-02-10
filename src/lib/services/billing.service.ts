@@ -60,6 +60,7 @@ export const billingService = {
         try {
             const q = query(
                 collection(db, 'organizations', organizationId, 'subscriptions'),
+                orderBy('createdAt', 'desc'),
                 limit(1)
             );
             const snapshot = await getDocs(q);
@@ -161,9 +162,11 @@ export const billingService = {
         }
 
         const now = new Date();
+        // Normalize billingState to uppercase for consistent comparison
+        const normalizedBillingState = (subscription.billingState || '').toString().toUpperCase();
 
         // Check if suspended
-        if (subscription.billingState === 'SUSPENDED') {
+        if (normalizedBillingState === 'SUSPENDED') {
             return {
                 state: 'SUSPENDED',
                 daysRemaining: 0,
@@ -175,39 +178,8 @@ export const billingService = {
             };
         }
 
-        // Check trial status
-        if (subscription.billingState === 'TRIAL') {
-            const trialEnd = subscription.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
-            if (trialEnd) {
-                const diffMs = trialEnd.getTime() - now.getTime();
-                const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-                if (daysRemaining <= 0) {
-                    // Trial expired - should suspend
-                    return {
-                        state: 'TRIAL',
-                        daysRemaining: 0,
-                        isTrialExpired: true,
-                        isPaymentDue: true,
-                        nextPaymentDate: null,
-                        canAccessPlatform: false, // Day 11 - payment required
-                        reason: 'Trial has expired. Payment required to continue.',
-                    };
-                }
-
-                return {
-                    state: 'TRIAL',
-                    daysRemaining: Math.max(0, daysRemaining),
-                    isTrialExpired: false,
-                    isPaymentDue: daysRemaining <= 2,
-                    nextPaymentDate: trialEnd,
-                    canAccessPlatform: true,
-                };
-            }
-        }
-
-        // Check active subscription
-        if (subscription.billingState === 'ACTIVE') {
+        // Check active subscription first (paid users should always have access)
+        if (normalizedBillingState === 'ACTIVE') {
             const nextBilling = subscription.nextBillingDate
                 ? new Date(subscription.nextBillingDate)
                 : null;
@@ -236,14 +208,46 @@ export const billingService = {
             };
         }
 
-        // Default fallback
+        // For TRIAL state or any other state — always check trial end date
+        // This covers: billingState === 'TRIAL', billingState === 'trial', billingState === 'Trial', or any unknown state
+        const trialEnd = subscription.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
+        if (trialEnd) {
+            const diffMs = trialEnd.getTime() - now.getTime();
+            const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            if (daysRemaining <= 0) {
+                // Trial expired - block access
+                return {
+                    state: 'TRIAL',
+                    daysRemaining: 0,
+                    isTrialExpired: true,
+                    isPaymentDue: true,
+                    nextPaymentDate: null,
+                    canAccessPlatform: false,
+                    reason: 'Your trial has expired. Please subscribe to continue using HURE Core.',
+                };
+            }
+
+            return {
+                state: 'TRIAL',
+                daysRemaining: Math.max(0, daysRemaining),
+                isTrialExpired: false,
+                isPaymentDue: daysRemaining <= 2,
+                nextPaymentDate: trialEnd,
+                canAccessPlatform: true,
+            };
+        }
+
+        // No trial end date found and not ACTIVE — treat as expired trial
+        // This is safer than allowing access by default
         return {
             state: subscription.billingState || 'TRIAL',
             daysRemaining: 0,
-            isTrialExpired: false,
-            isPaymentDue: false,
+            isTrialExpired: true,
+            isPaymentDue: true,
             nextPaymentDate: null,
-            canAccessPlatform: true,
+            canAccessPlatform: false,
+            reason: 'Unable to verify subscription status. Please contact support or go to billing.',
         };
     },
 
