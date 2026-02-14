@@ -83,14 +83,18 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
         );
     }
 
+    // Check if user is an employee (not owner/admin)
+    // Note: Adjust logic as needed based on your role system
+    const isEmployee = user?.systemRole !== 'OWNER' && user?.systemRole !== 'ADMIN';
+
     // Suspended - show suspension screen
     if (!state.canAccess && state.billingState === 'SUSPENDED') {
-        return <SuspensionScreen />;
+        return <SuspensionScreen isEmployee={isEmployee} />;
     }
 
     // Trial expired but not yet suspended - also block
     if (!state.canAccess) {
-        return <SuspensionScreen reason={state.reason} />;
+        return <SuspensionScreen reason={state.reason} isEmployee={isEmployee} />;
     }
 
     // Access allowed
